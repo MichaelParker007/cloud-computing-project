@@ -25,3 +25,4 @@ def root():
 @app.get("/versicherungen")
 def get_versicherungen():
     return versicherungen
+    
