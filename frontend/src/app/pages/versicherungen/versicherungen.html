@@ -1,0 +1,21 @@
+<div class="page-container">
+  <header class="header">
+    <div class="header-content">
+      <span class="logo">🛡️ Versicherungs-Hub</span>
+      <button class="logout-btn" (click)="onLogout()">Abmelden</button>
+    </div>
+  </header>
+
+  <main class="main-content">
+    <h2>Meine Versicherungen</h2>
+    <div class="cards-grid">
+      @for (v of versicherungen; track v.id) {
+        <div class="card">
+          <h3>{{ v.typ }}</h3>
+          <p class="anbieter">{{ v.anbieter }}</p>
+          <p class="preis">{{ v.preis }}€ <span>/ Monat</span></p>
+        </div>
+      }
+    </div>
+  </main>
+</div>
