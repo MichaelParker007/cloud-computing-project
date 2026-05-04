@@ -5,7 +5,6 @@ backend/*.pyc
 
 # Angular
 frontend/node_modules/
-frontend/dist/
 
 # Allgemein
 .env
