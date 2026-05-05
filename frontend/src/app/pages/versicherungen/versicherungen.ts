@@ -19,7 +19,7 @@ export class Versicherungen implements OnInit {
   ) {}
 
   ngOnInit() {
-    this.http.get<any[]>('http://localhost:8000/versicherungen').subscribe((data) => {
+      this.http.get<any[]>('http://34.159.210.74:5000/versicherungen').subscribe((data) => {
       this.versicherungen = data;
       this.cdr.detectChanges();
     });
