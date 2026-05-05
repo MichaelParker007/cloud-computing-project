@@ -1,9 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from google.cloud import firestore
 
 app = FastAPI()
 
-# auf die API zugreifen
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -11,12 +11,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Testdaten – später durch echte Datenbank ersetzen
-versicherungen = [
-    {"id": 1, "typ": "Autoversicherung", "anbieter": "Allianz", "preis": 89.99},
-    {"id": 2, "typ": "Lebensversicherung", "anbieter": "AXA", "preis": 120.00},
-    {"id": 3, "typ": "Zahnversicherung", "anbieter": "DKV", "preis": 35.50},
-]
+# Firestore verbinden
+db = firestore.Client()
 
 @app.get("/")
 def root():
@@ -24,5 +20,12 @@ def root():
 
 @app.get("/versicherungen")
 def get_versicherungen():
+    docs = db.collection("versicherungen").stream()
+
+    versicherungen = []
+    for doc in docs:
+        data = doc.to_dict()
+        data["doc_id"] = doc.id
+        versicherungen.append(data)
+
     return versicherungen
-    
