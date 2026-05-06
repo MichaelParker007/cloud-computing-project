@@ -6,12 +6,12 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://34.159.210.74:4200"],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Firestore verbinden
 db = firestore.Client()
 
 @app.get("/")
@@ -21,11 +21,4 @@ def root():
 @app.get("/versicherungen")
 def get_versicherungen():
     docs = db.collection("versicherungen").stream()
-
-    versicherungen = []
-    for doc in docs:
-        data = doc.to_dict()
-        data["doc_id"] = doc.id
-        versicherungen.append(data)
-
-    return versicherungen
+    return [doc.to_dict() | {"doc_id": doc.id} for doc in docs]
