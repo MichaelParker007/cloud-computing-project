@@ -8,8 +8,9 @@
 
   <main class="main-content">
     <h2>Meine Versicherungen</h2>
+
     <div class="cards-grid">
-      @for (v of versicherungen; track v.id) {
+      @for (v of versicherungen; track v.doc_id) {
         <div class="card">
           <h3>{{ v.typ }}</h3>
           <p class="anbieter">{{ v.anbieter }}</p>
