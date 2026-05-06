@@ -1,4 +1,4 @@
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
@@ -12,16 +12,22 @@ import { HttpClient } from '@angular/common/http';
 export class Versicherungen implements OnInit {
   versicherungen: any[] = [];
 
+  private apiUrl = 'http://34.159.210.74:5000/versicherungen';
+
   constructor(
     private router: Router,
     private http: HttpClient,
-    private cdr: ChangeDetectorRef,
   ) {}
 
   ngOnInit() {
-      this.http.get<any[]>('http://34.159.210.74:5000/versicherungen').subscribe((data) => {
-      this.versicherungen = data;
-      this.cdr.detectChanges();
+    this.http.get<any[]>(this.apiUrl).subscribe({
+      next: (data) => {
+        console.log('Versicherungen geladen:', data);
+        this.versicherungen = data;
+      },
+      error: (err) => {
+        console.error('Fehler beim Laden der Versicherungen:', err);
+      },
     });
   }
 
