@@ -12,7 +12,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-db = firestore.Client(database="versicherung-db")
+""" db = firestore.Client(database="versicherung-db") """
+db = firestore.Client(
+    project="project-64e4ee95-be58-4dea-8c0",
+    database="versicherung-db"
+)
 
 @app.get("/")
 def root():
