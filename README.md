@@ -271,6 +271,142 @@ Frontend URL:
 https://frontend-dot-project-64e4ee95-be58-4dea-8c0.ey.r.appspot.com
 ```
 
+# Einstellung von Kubernetes Engine
+
+## 1. Docker-Container erstellt
+
+Im Backend wurde zuerst ein Docker-Image gebaut:
+
+```bash
+docker build -t versicherung-backend .
+```
+
+Dadurch wurde die FastAPI-Anwendung containerisiert.
+
+---
+
+## 2. Image in Artifact Registry hochgeladen
+
+Docker-Image taggen:
+
+```bash
+docker tag versicherung-backend \
+europe-west3-docker.pkg.dev/project-64e4ee95-be58-4dea-8c0/versicherung-repo/versicherung-backend:latest
+```
+
+Image hochladen:
+
+```bash
+docker push \
+europe-west3-docker.pkg.dev/project-64e4ee95-be58-4dea-8c0/versicherung-repo/versicherung-backend:latest
+```
+
+---
+
+## 3. Kubernetes Cluster verwendet
+
+Ein bestehender Autopilot-Cluster wurde genutzt:
+
+```text
+autopilot-cluster-2
+```
+
+Cluster-Zugriff:
+
+```bash
+gcloud container clusters get-credentials autopilot-cluster-2 \
+--region=europe-west3
+```
+
+---
+
+## 4. Deployment erstellt
+
+Backend-Deployment:
+
+```bash
+kubectl create deployment versicherung-backend \
+--image=europe-west3-docker.pkg.dev/project-64e4ee95-be58-4dea-8c0/versicherung-repo/versicherung-backend:latest
+```
+
+---
+
+## 5. LoadBalancer erstellt
+
+Service öffentlich erreichbar gemacht:
+
+```bash
+kubectl expose deployment versicherung-backend \
+--type=LoadBalancer \
+--port=80 \
+--target-port=5000
+```
+
+Dadurch wurde eine externe IP erzeugt.
+
+---
+
+## 6. Firestore-Berechtigungen konfiguriert
+
+Für den Zugriff auf Firestore wurde:
+
+- ein Google Service Account erstellt
+    
+- die Rolle `Cloud Datastore User` vergeben
+    
+- Workload Identity konfiguriert
+    
+
+Kubernetes Service Account:
+
+```bash
+kubectl create serviceaccount firestore-ksa
+```
+
+Deployment mit Service Account verbunden:
+
+```bash
+kubectl patch deployment versicherung-backend \
+-p '{"spec":{"template":{"spec":{"serviceAccountName":"firestore-ksa"}}}}'
+```
+
+---
+
+## 7. Firestore im Backend konfiguriert
+
+```python
+db = firestore.Client(
+    project="project-64e4ee95-be58-4dea-8c0",
+    database="versicherung-db"
+)
+```
+
+---
+
+# Ergebnis
+
+Die Anwendung läuft erfolgreich in Google Kubernetes Engine.
+
+API erreichbar unter:
+
+```text
+http://34.159.91.7/versicherungen
+```
+
+Antwort:
+
+```json
+[
+  {
+    "id": 1,
+    "typ": "Autoversicherung",
+    "anbieter": "Allianz",
+    "preis": 89.99
+  }
+]
+```
+
+
 # Cloud Run Deployment
 
 ## Ziel
