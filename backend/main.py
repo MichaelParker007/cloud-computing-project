@@ -6,13 +6,12 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://34.159.210.74:4200"],
+    allow_origins=["http://34.185.199.66:4200"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-""" db = firestore.Client(database="versicherung-db") """
 db = firestore.Client(
     project="project-64e4ee95-be58-4dea-8c0",
     database="versicherung-db"
