@@ -1,0 +1,5 @@
+fastapi
+uvicorn
+gunicorn
+google-cloud-firestore
+google-cloud-storage
