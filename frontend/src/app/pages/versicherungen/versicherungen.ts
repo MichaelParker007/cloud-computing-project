@@ -12,7 +12,7 @@ import { HttpClient } from '@angular/common/http';
 export class Versicherungen implements OnInit {
   versicherungen: any[] = [];
 
-  private apiUrl = 'http://34.159.91.7/versicherungen'; // vorhin für IaaS war = 'https://project-64e4ee95-be58-4dea-8c0.ey.r.appspot.com/versicherungen';
+  private apiUrl = 'http://34.185.199.66:5000/versicherungen'; // vorhin für IaaS war = 'https://project-64e4ee95-be58-4dea-8c0.ey.r.appspot.com/versicherungen';
 
   constructor(
     private router: Router,
