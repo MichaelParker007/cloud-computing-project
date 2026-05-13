@@ -1,20 +1,47 @@
-<div class="page-container">
-  <header class="header">
-    <div class="header-content">
-      <span class="logo">🛡️ Versicherungs-Hub</span>
-      <button class="logout-btn" (click)="onLogout()">Abmelden</button>
+<div class="page">
+  <header class="navbar">
+    <div class="brand">
+      <span>🛡️</span>
+      <h1>Versicherungs-Hub</h1>
     </div>
+
+    <button class="logout-btn" (click)="onLogout()">Abmelden</button>
   </header>
 
-  <main class="main-content">
+  <main class="content">
     <h2>Meine Versicherungen</h2>
 
-    <div class="cards-grid">
-      <div class="card" *ngFor="let v of versicherungen">
-        <h3>{{ v.typ }}</h3>
-        <p>Anbieter: {{ v.anbieter }}</p>
-        <p>Preis: {{ v.preis }} € / Monat</p>
-      </div>
+    @if (isLoading && versicherungen.length === 0) {
+      <p class="info">Versicherungen werden geladen...</p>
+    }
+
+    @if (errorMessage) {
+      <p class="error">{{ errorMessage }}</p>
+    }
+
+    @if (!isLoading && versicherungen.length === 0) {
+      <p class="info">Keine Versicherungen gefunden.</p>
+    }
+
+    <div class="versicherung-grid">
+      @for (versicherung of versicherungen; track versicherung.doc_id) {
+        <div class="versicherung-card">
+          <div class="card-header">
+            <h3>{{ versicherung.name }}</h3>
+            <span>{{ versicherung.category }}</span>
+          </div>
+
+          <p class="provider">{{ versicherung.provider }}</p>
+
+          <p class="description">
+            {{ versicherung.description }}
+          </p>
+
+          <p class="price">{{ versicherung.monthly_price }} € / Monat</p>
+
+          <button class="details-btn">Details anzeigen</button>
+        </div>
+      }
     </div>
   </main>
 </div>

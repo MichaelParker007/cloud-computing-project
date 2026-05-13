@@ -1,97 +1,127 @@
-.page-container {
+.page {
   min-height: 100vh;
   background-color: #0f172a;
   color: white;
+  font-family: Arial, sans-serif;
 }
 
-.header {
+.navbar {
+  height: 70px;
   background-color: #1e293b;
-  padding: 16px 32px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-}
-
-.header-content {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  max-width: 1200px;
-  margin: 0 auto;
+  justify-content: space-between;
+  padding: 0 36px;
+  border-bottom: 1px solid #334155;
 }
 
-.logo {
-  font-size: 22px;
-  font-weight: bold;
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brand h1 {
+  font-size: 24px;
+  margin: 0;
 }
 
 .logout-btn {
-  background-color: transparent;
-  border: 1px solid #94a3b8;
-  color: #94a3b8;
-  padding: 8px 16px;
+  background: transparent;
+  color: #cbd5e1;
+  border: 1px solid #64748b;
+  padding: 10px 18px;
   border-radius: 8px;
   cursor: pointer;
-  transition: all 0.2s;
 }
 
 .logout-btn:hover {
-  border-color: white;
-  color: white;
+  background-color: #334155;
 }
 
-.main-content {
-  max-width: 1200px;
-  margin: 40px auto;
-  padding: 0 32px;
+.content {
+  padding: 40px;
 }
 
-h2 {
-  font-size: 28px;
-  font-weight: bold;
-  margin-bottom: 24px;
+.content h2 {
+  font-size: 32px;
+  margin-bottom: 32px;
 }
 
-.cards-grid {
+.versicherung-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 24px;
 }
 
-.card {
+.versicherung-card {
   background-color: #1e293b;
+  padding: 24px;
   border-radius: 16px;
-  padding: 32px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
-  transition: transform 0.2s;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  border: 1px solid #334155;
 }
 
-.card:hover {
-  transform: translateY(-4px);
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
 }
 
-.card-icon {
-  font-size: 48px;
-  margin-bottom: 16px;
+.card-header h3 {
+  margin: 0;
+  font-size: 22px;
 }
 
-h3 {
-  font-size: 20px;
-  font-weight: bold;
-  margin-bottom: 8px;
+.card-header span {
+  background-color: #dbeafe;
+  color: #1d4ed8;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  white-space: nowrap;
 }
 
-.anbieter {
+.provider {
   color: #94a3b8;
-  margin-bottom: 16px;
+  margin: 14px 0;
 }
 
-.preis {
-  font-size: 24px;
+.description {
+  color: #e2e8f0;
+  line-height: 1.5;
+}
+
+.price {
+  font-size: 22px;
   font-weight: bold;
-  color: #4285f4;
+  margin-top: 20px;
 }
 
-.preis span {
-  font-size: 14px;
-  color: #94a3b8;
-  font-weight: normal;
+.details-btn {
+  width: 100%;
+  background-color: #2563eb;
+  color: white;
+  border: none;
+  padding: 12px;
+  border-radius: 8px;
+  font-weight: bold;
+  cursor: pointer;
+  margin-top: 16px;
+}
+
+.details-btn:hover {
+  background-color: #1d4ed8;
+}
+
+.info {
+  color: #cbd5e1;
+}
+
+.error {
+  background-color: #7f1d1d;
+  color: #fecaca;
+  padding: 12px 16px;
+  border-radius: 8px;
 }

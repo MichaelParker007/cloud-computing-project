@@ -1,11 +1,31 @@
 # Python
 backend/venv/
 backend/__pycache__/
-backend/*.pyc
+backend/**/*.pyc
+backend/.pytest_cache/
+
+# Environment / Secrets
+.env
+**/.env
+*.env
+backend/service-account*.json
+backend/*service*.json
+backend/*credentials*.json
+backend/*key*.json
 
 # Angular
 frontend/node_modules/
+frontend/dist/
+frontend/.angular/
 
-# Allgemein
-.env
+# Editor / System
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Logs
 *.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
