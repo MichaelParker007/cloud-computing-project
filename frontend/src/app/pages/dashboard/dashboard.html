@@ -1,0 +1,67 @@
+<div class="dashboard">
+  <div class="welcome-section">
+    <h1>Willkommen zurück, {{ user?.name?.split(' ')?.[0] || 'User' }} 👋</h1>
+    <p class="role-badge">{{ roleName }}</p>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-card">
+      <span class="stat-icon">📋</span>
+      <div class="stat-info">
+        <span class="stat-value">{{ stats.versicherungen }}</span>
+        <span class="stat-label">Versicherungen</span>
+      </div>
+    </div>
+    <div class="stat-card">
+      <span class="stat-icon">📁</span>
+      <div class="stat-info">
+        <span class="stat-value">{{ stats.folders }}</span>
+        <span class="stat-label">Ordner</span>
+      </div>
+    </div>
+    <div class="stat-card">
+      <span class="stat-icon">📄</span>
+      <div class="stat-info">
+        <span class="stat-value">{{ stats.files }}</span>
+        <span class="stat-label">Dateien</span>
+      </div>
+    </div>
+    @if (user?.role === 'admin') {
+    <div class="stat-card">
+      <span class="stat-icon">👥</span>
+      <div class="stat-info">
+        <span class="stat-value">{{ stats.users }}</span>
+        <span class="stat-label">Benutzer</span>
+      </div>
+    </div>
+    }
+  </div>
+
+  <div class="quick-actions">
+    <h2>Schnellzugriff</h2>
+    <div class="actions-grid">
+      <a routerLink="/versicherungen" class="action-card" id="action-versicherungen">
+        <span class="action-icon">📋</span>
+        <span class="action-title">Versicherungen</span>
+        <span class="action-desc">Alle Tarife einsehen</span>
+      </a>
+      <a routerLink="/pakete" class="action-card" id="action-pakete">
+        <span class="action-icon">📦</span>
+        <span class="action-title">Pakete</span>
+        <span class="action-desc">Leistungen & Pakete</span>
+      </a>
+      <a routerLink="/dateien" class="action-card" id="action-dateien">
+        <span class="action-icon">📁</span>
+        <span class="action-title">Dateien</span>
+        <span class="action-desc">Dokumente verwalten</span>
+      </a>
+      @if (user?.role === 'admin') {
+      <a routerLink="/benutzer" class="action-card" id="action-benutzer">
+        <span class="action-icon">⚙️</span>
+        <span class="action-title">Benutzer</span>
+        <span class="action-desc">Rollen verwalten</span>
+      </a>
+      }
+    </div>
+  </div>
+</div>

@@ -1,0 +1,86 @@
+<div class="app-layout" [class.sidebar-collapsed]="!sidebarOpen">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <span class="sidebar-logo">🛡️</span>
+      @if (sidebarOpen) {
+      <span class="sidebar-title">Versicherungs-Hub</span>
+      }
+    </div>
+
+    <nav class="sidebar-nav">
+      <a routerLink="/dashboard" routerLinkActive="active" class="nav-item" id="nav-dashboard">
+        <span class="nav-icon">📊</span>
+        @if (sidebarOpen) { <span>Dashboard</span> }
+      </a>
+
+      <a routerLink="/versicherungen" routerLinkActive="active" class="nav-item" id="nav-versicherungen">
+        <span class="nav-icon">📋</span>
+        @if (sidebarOpen) { <span>Versicherungen</span> }
+      </a>
+
+      <a routerLink="/pakete" routerLinkActive="active" class="nav-item" id="nav-pakete">
+        <span class="nav-icon">📦</span>
+        @if (sidebarOpen) { <span>Pakete</span> }
+      </a>
+
+      <a routerLink="/dateien" routerLinkActive="active" class="nav-item" id="nav-dateien">
+        <span class="nav-icon">📁</span>
+        @if (sidebarOpen) { <span>Dateien</span> }
+      </a>
+
+      @if (isAdmin || isBerater) {
+      <div class="nav-divider"></div>
+      <span class="nav-section-label" [class.hidden]="!sidebarOpen">Verwaltung</span>
+
+      @if (isBerater || isAdmin) {
+      <a routerLink="/kunden" routerLinkActive="active" class="nav-item" id="nav-kunden">
+        <span class="nav-icon">👥</span>
+        @if (sidebarOpen) { <span>Meine Kunden</span> }
+      </a>
+      }
+
+      @if (isAdmin) {
+      <a routerLink="/benutzer" routerLinkActive="active" class="nav-item" id="nav-benutzer">
+        <span class="nav-icon">⚙️</span>
+        @if (sidebarOpen) { <span>Benutzerverwaltung</span> }
+      </a>
+      }
+      }
+    </nav>
+
+    <div class="sidebar-footer">
+      @if (user) {
+      <div class="user-info">
+        @if (user.picture) {
+        <img [src]="user.picture" alt="Avatar" class="avatar" />
+        } @else {
+        <div class="avatar-placeholder">{{ user.name.charAt(0).toUpperCase() }}</div>
+        }
+        @if (sidebarOpen) {
+        <div class="user-details">
+          <span class="user-name">{{ user.name }}</span>
+          <span class="user-role">{{ roleName }}</span>
+        </div>
+        }
+      </div>
+      }
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <div class="main-area">
+    <header class="topbar">
+      <button class="toggle-btn" (click)="toggleSidebar()" id="toggle-sidebar">
+        @if (sidebarOpen) { ◀ } @else { ▶ }
+      </button>
+      <div class="topbar-right">
+        <span class="user-greeting">Hallo, {{ user?.name?.split(' ')?.[0] || 'User' }}</span>
+        <button class="logout-btn" (click)="onLogout()" id="logout-btn">Abmelden</button>
+      </div>
+    </header>
+    <main class="page-content">
+      <router-outlet />
+    </main>
+  </div>
+</div>

@@ -1,0 +1,26 @@
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "5001:5000"
+    environment:
+      - GOOGLE_APPLICATION_CREDENTIALS=/root/.config/gcloud/application_default_credentials.json
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+      - FIRESTORE_PROJECT_ID=${FIRESTORE_PROJECT_ID:-project-64e4ee95-be58-4dea-8c0}
+      - FIRESTORE_DATABASE=${FIRESTORE_DATABASE:-versicherung-db}
+      - JWT_SECRET=${JWT_SECRET:-dev-secret-change-in-production}
+      - FRONTEND_BUCKET=${FRONTEND_BUCKET:-versicherung-frontend-storage}
+      - FILE_UPLOAD_BUCKET=${FILE_UPLOAD_BUCKET:-versicherung-file-uploads}
+    volumes:
+      - ~/.config/gcloud:/root/.config/gcloud:ro
+    env_file:
+      - .env
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "4200:80"
+    depends_on:
+      - backend
+    restart: unless-stopped

@@ -1,0 +1,43 @@
+<div class="kunden-page">
+  <div class="page-header">
+    <h1>👥 Meine Kunden</h1>
+    <button class="btn btn-primary" (click)="showAssignForm = !showAssignForm" id="assign-client-btn">
+      + Kunde zuweisen
+    </button>
+  </div>
+
+  @if (message) {
+    <div class="message-banner">{{ message }}</div>
+  }
+
+  @if (showAssignForm) {
+    <div class="assign-form">
+      <input type="email" [(ngModel)]="newClientEmail" placeholder="Kunden E-Mail eingeben..." (keyup.enter)="assignClient()" id="client-email-input" />
+      <button class="btn btn-primary" (click)="assignClient()">Zuweisen</button>
+      <button class="btn btn-ghost" (click)="showAssignForm = false">Abbrechen</button>
+    </div>
+  }
+
+  @if (isLoading) {
+    <p class="info">Wird geladen...</p>
+  }
+
+  @if (!isLoading && clients.length === 0) {
+    <div class="empty-state">
+      <span class="empty-icon">👤</span>
+      <p>Keine Kunden zugewiesen.</p>
+    </div>
+  }
+
+  <div class="clients-grid">
+    @for (client of clients; track client.user_id) {
+      <div class="client-card">
+        <div class="client-avatar">{{ client.name?.charAt(0)?.toUpperCase() }}</div>
+        <div class="client-info">
+          <span class="client-name">{{ client.name }}</span>
+          <span class="client-email">{{ client.email }}</span>
+        </div>
+      </div>
+    }
+  </div>
+</div>

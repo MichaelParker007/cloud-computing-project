@@ -4,3 +4,5 @@ gunicorn
 google-cloud-firestore
 google-cloud-storage
 python-dotenv
+PyJWT
+python-multipart

@@ -1,0 +1,51 @@
+.pakete-page h1 { font-size: 28px; font-weight: 700; margin: 0 0 8px; }
+.page-desc { color: #94a3b8; margin-bottom: 36px; }
+.info { color: #94a3b8; }
+
+.packages-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 24px;
+  max-width: 1100px;
+}
+
+.package-card {
+  background: rgba(30, 41, 59, 0.7);
+  border: 1px solid rgba(71, 85, 105, 0.3);
+  border-radius: 18px;
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.2s, border-color 0.2s;
+}
+.package-card:hover { transform: translateY(-4px); }
+.package-card.tier-basic:hover { border-color: rgba(148, 163, 184, 0.5); }
+.package-card.tier-komfort { border-color: rgba(59, 130, 246, 0.3); }
+.package-card.tier-komfort:hover { border-color: rgba(59, 130, 246, 0.6); }
+.package-card.tier-premium {
+  border-color: rgba(234, 179, 8, 0.3);
+  background: linear-gradient(135deg, rgba(30,41,59,0.9), rgba(234,179,8,0.05));
+}
+.package-card.tier-premium:hover { border-color: rgba(234, 179, 8, 0.6); }
+
+.pkg-header { text-align: center; margin-bottom: 16px; }
+.pkg-icon { font-size: 42px; display: block; margin-bottom: 8px; }
+.pkg-header h2 { font-size: 22px; margin: 0 0 6px; }
+.tier-label {
+  font-size: 11px; letter-spacing: 1.5px; color: #64748b;
+  background: rgba(51,65,85,0.5); padding: 3px 10px; border-radius: 999px;
+}
+
+.pkg-desc { color: #94a3b8; font-size: 14px; line-height: 1.5; text-align: center; margin-bottom: 20px; }
+
+.pkg-price { text-align: center; margin-bottom: 24px; }
+.price-value { font-size: 32px; font-weight: 700; }
+.price-period { color: #64748b; font-size: 14px; }
+
+.pkg-features {
+  list-style: none; padding: 0; margin: 0;
+  display: flex; flex-direction: column; gap: 10px;
+  border-top: 1px solid rgba(71,85,105,0.2);
+  padding-top: 20px;
+}
+.pkg-features li { font-size: 14px; color: #cbd5e1; }

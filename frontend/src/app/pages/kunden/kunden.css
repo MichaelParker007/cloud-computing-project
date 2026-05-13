@@ -1,0 +1,37 @@
+.kunden-page h1 { font-size: 28px; font-weight: 700; margin: 0; }
+.page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; }
+
+.btn { padding: 10px 18px; border-radius: 10px; font-size: 14px; font-weight: 500; cursor: pointer; border: none; display: inline-flex; align-items: center; gap: 6px; }
+.btn-primary { background: linear-gradient(135deg, #2563eb, #7c3aed); color: white; }
+.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(37,99,235,0.3); }
+.btn-ghost { background: transparent; color: #94a3b8; }
+
+.message-banner { background: rgba(59,130,246,0.15); border: 1px solid rgba(59,130,246,0.3); color: #93c5fd; padding: 12px 16px; border-radius: 10px; margin-bottom: 20px; font-size: 14px; }
+
+.assign-form {
+  display: flex; gap: 10px; align-items: center; margin-bottom: 24px;
+  background: rgba(30,41,59,0.6); padding: 14px 18px; border-radius: 12px; border: 1px solid rgba(71,85,105,0.3);
+}
+.assign-form input {
+  flex: 1; padding: 10px 14px; background: rgba(15,23,42,0.6);
+  border: 1px solid rgba(71,85,105,0.4); border-radius: 8px; color: white; font-size: 14px; outline: none;
+}
+.assign-form input:focus { border-color: #3b82f6; }
+
+.info { color: #94a3b8; }
+.empty-state { text-align: center; padding: 60px 20px; color: #64748b; }
+.empty-icon { font-size: 48px; display: block; margin-bottom: 12px; }
+
+.clients-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+.client-card {
+  background: rgba(30,41,59,0.6); border: 1px solid rgba(71,85,105,0.3); border-radius: 14px;
+  padding: 20px; display: flex; align-items: center; gap: 16px; transition: all 0.15s;
+}
+.client-card:hover { border-color: rgba(59,130,246,0.3); }
+.client-avatar {
+  width: 44px; height: 44px; border-radius: 50%; background: linear-gradient(135deg, #2563eb, #7c3aed);
+  display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 18px; flex-shrink: 0;
+}
+.client-info { display: flex; flex-direction: column; }
+.client-name { font-weight: 600; font-size: 15px; }
+.client-email { font-size: 13px; color: #94a3b8; }

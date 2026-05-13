@@ -1,0 +1,57 @@
+<div class="benutzer-page">
+  <h1>⚙️ Benutzerverwaltung</h1>
+  <p class="page-desc">Verwalten Sie alle Benutzer und deren Rollen.</p>
+
+  @if (isLoading) {
+    <p class="info">Benutzer werden geladen...</p>
+  }
+
+  <!-- Edit Modal -->
+  @if (editingUser) {
+    <div class="modal-overlay" (click)="cancelEdit()">
+      <div class="modal" (click)="$event.stopPropagation()">
+        <h3>Rolle ändern: {{ editingUser.name }}</h3>
+        <select [(ngModel)]="editRole" id="role-select">
+          <option value="admin">Administrator</option>
+          <option value="berater">Berater</option>
+          <option value="kunde">Kunde</option>
+        </select>
+        <div class="modal-actions">
+          <button class="btn btn-primary" (click)="saveRole()" id="save-role-btn">Speichern</button>
+          <button class="btn btn-ghost" (click)="cancelEdit()">Abbrechen</button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <div class="users-table-wrap">
+    <table class="users-table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>E-Mail</th>
+          <th>Rolle</th>
+          <th>Anmeldung</th>
+          <th>Aktionen</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (user of users; track user.user_id) {
+          <tr>
+            <td class="user-cell">
+              <div class="user-avatar">{{ user.name?.charAt(0)?.toUpperCase() }}</div>
+              {{ user.name }}
+            </td>
+            <td>{{ user.email }}</td>
+            <td><span class="role-badge" [class]="getRoleBadgeClass(user.role)">{{ user.role }}</span></td>
+            <td>{{ user.auth_provider }}</td>
+            <td class="actions-cell">
+              <button class="action-btn edit" (click)="startEdit(user)" title="Rolle ändern">✏️</button>
+              <button class="action-btn delete" (click)="deleteUser(user.user_id)" title="Löschen">🗑</button>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>

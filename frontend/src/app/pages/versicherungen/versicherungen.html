@@ -1,47 +1,36 @@
-<div class="page">
-  <header class="navbar">
-    <div class="brand">
-      <span>🛡️</span>
-      <h1>Versicherungs-Hub</h1>
-    </div>
+<div class="versicherungen-page">
+  <h1>📋 Meine Versicherungen</h1>
 
-    <button class="logout-btn" (click)="onLogout()">Abmelden</button>
-  </header>
+  @if (isLoading && versicherungen.length === 0) {
+    <p class="info">Versicherungen werden geladen...</p>
+  }
 
-  <main class="content">
-    <h2>Meine Versicherungen</h2>
+  @if (errorMessage) {
+    <p class="error">{{ errorMessage }}</p>
+  }
 
-    @if (isLoading && versicherungen.length === 0) {
-      <p class="info">Versicherungen werden geladen...</p>
-    }
+  @if (!isLoading && versicherungen.length === 0) {
+    <p class="info">Keine Versicherungen gefunden.</p>
+  }
 
-    @if (errorMessage) {
-      <p class="error">{{ errorMessage }}</p>
-    }
-
-    @if (!isLoading && versicherungen.length === 0) {
-      <p class="info">Keine Versicherungen gefunden.</p>
-    }
-
-    <div class="versicherung-grid">
-      @for (versicherung of versicherungen; track versicherung.doc_id) {
-        <div class="versicherung-card">
-          <div class="card-header">
-            <h3>{{ versicherung.name }}</h3>
-            <span>{{ versicherung.category }}</span>
-          </div>
-
-          <p class="provider">{{ versicherung.provider }}</p>
-
-          <p class="description">
-            {{ versicherung.description }}
-          </p>
-
-          <p class="price">{{ versicherung.monthly_price }} € / Monat</p>
-
-          <button class="details-btn">Details anzeigen</button>
+  <div class="versicherung-grid">
+    @for (versicherung of versicherungen; track versicherung.doc_id) {
+      <div class="versicherung-card">
+        <div class="card-header">
+          <h3>{{ versicherung.name }}</h3>
+          <span>{{ versicherung.category }}</span>
         </div>
-      }
-    </div>
-  </main>
+
+        <p class="provider">{{ versicherung.provider }}</p>
+
+        <p class="description">
+          {{ versicherung.description }}
+        </p>
+
+        <p class="price">{{ versicherung.monthly_price }} € / Monat</p>
+
+        <button class="details-btn">Details anzeigen</button>
+      </div>
+    }
+  </div>
 </div>

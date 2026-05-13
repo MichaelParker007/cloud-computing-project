@@ -1,0 +1,34 @@
+<div class="pakete-page">
+  <h1>Pakete & Leistungen</h1>
+  <p class="page-desc">Wählen Sie das Paket, das am besten zu Ihnen passt.</p>
+
+  @if (isLoading) {
+    <p class="info">Pakete werden geladen...</p>
+  }
+
+  <div class="packages-grid">
+    @for (pkg of packages; track pkg.package_id) {
+      <div class="package-card" [class]="getTierClass(pkg.tier)">
+        <div class="pkg-header">
+          <span class="pkg-icon">{{ getTierIcon(pkg.tier) }}</span>
+          <h2>{{ pkg.name }}</h2>
+          <span class="tier-label">{{ pkg.tier | uppercase }}</span>
+        </div>
+        <p class="pkg-desc">{{ pkg.description }}</p>
+        <div class="pkg-price">
+          @if (pkg.price === 0) {
+            <span class="price-value">Kostenlos</span>
+          } @else {
+            <span class="price-value">{{ pkg.price }} €</span>
+            <span class="price-period">/ Monat</span>
+          }
+        </div>
+        <ul class="pkg-features">
+          @for (l of pkg.leistungen; track l) {
+            <li>✓ {{ l }}</li>
+          }
+        </ul>
+      </div>
+    }
+  </div>
+</div>
