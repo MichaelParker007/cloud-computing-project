@@ -137,7 +137,7 @@ def load_versicherungen_from_firestore() -> list[dict]:
 
 @app.get("/")
 def root():
-    return {"message": "Versicherungen HUB API läuft."}
+    return serve_frontend("")
 
 
 @app.get("/health")
