@@ -6,3 +6,6 @@ google-cloud-storage
 python-dotenv
 PyJWT
 python-multipart
+sqlalchemy
+pymysql
+cloud-sql-python-connector[pymysql]
