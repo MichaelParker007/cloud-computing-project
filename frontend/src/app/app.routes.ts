@@ -8,7 +8,7 @@ import { Dateien } from './pages/dateien/dateien';
 import { Benutzer } from './pages/benutzer/benutzer';
 import { Kunden } from './pages/kunden/kunden';
 import { authGuard, roleGuard } from './guards/auth.guard';
-import { Einzelversicherung } from './pages/einzelversicherung/einzelversicherung';
+import { Einzelversicherung } from './pages/einzelversicherung/einzelversicherungen';
 
 export const routes: Routes = [
   { path: '', redirectTo: 'login', pathMatch: 'full' },
