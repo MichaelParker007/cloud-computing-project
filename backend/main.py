@@ -213,7 +213,7 @@ def get_or_create_user_from_google(google_info: dict) -> User:
     with Session(engine) as sql_db:
         sql_user = (
             sql_db.query(SQLUser)
-            .filter(SQLUser.google_sub == google_info["google_id"])
+            .filter(SQLUser.email == google_info["email"])
             .first()
         )
 
@@ -223,8 +223,15 @@ def get_or_create_user_from_google(google_info: dict) -> User:
                 email=google_info["email"],
                 name=google_info["name"],
                 picture=google_info.get("picture"),
+                auth_provider="google",
+                role="kunde",
             )
             sql_db.add(sql_user)
+        else:
+            sql_user.google_sub = sql_user.google_sub or google_info["google_id"]
+            sql_user.name = sql_user.name or google_info["name"]
+            sql_user.picture = sql_user.picture or google_info.get("picture")
+            sql_user.auth_provider = sql_user.auth_provider or "google"
 
         sql_user.last_login = datetime.utcnow()
         sql_db.commit()
@@ -234,9 +241,9 @@ def get_or_create_user_from_google(google_info: dict) -> User:
             user_id=str(sql_user.id),
             name=sql_user.name or "",
             email=sql_user.email,
-            role="kunde",
+            role=sql_user.role or "kunde",
             picture=sql_user.picture,
-            auth_provider="google",
+            auth_provider=sql_user.auth_provider or "google",
         )
 
 
@@ -348,82 +355,95 @@ def login_with_google(request: GoogleLoginRequest):
 
 @app.post("/api/auth/register")
 def register_with_email(request: EmailRegisterRequest):
-    users_ref = db.collection("users")
-    existing = list(users_ref.where("email", "==", request.email).limit(1).stream())
-    if existing:
-        raise HTTPException(status_code=409, detail="Ein Benutzer mit dieser E-Mail existiert bereits.")
+    with Session(engine) as sql_db:
+        existing = (
+            sql_db.query(SQLUser)
+            .filter(SQLUser.email == request.email)
+            .first()
+        )
 
-    user_id = str(uuid.uuid4())
-    user_data = {
-        "name": request.name,
-        "email": request.email,
-        "role": "kunde",
-        "password_hash": hash_password(request.password),
-        "auth_provider": "email",
-        "picture": None,
-        "created_at": datetime.now(timezone.utc).isoformat(),
-    }
-    users_ref.document(user_id).set(user_data)
+        if existing:
+            raise HTTPException(
+                status_code=409,
+                detail="Ein Benutzer mit dieser E-Mail existiert bereits.",
+            )
 
-    token = create_jwt_token({
-        "user_id": user_id,
-        "name": request.name,
-        "email": request.email,
-        "role": "kunde",
-        "picture": None,
-        "auth_provider": "email",
-    })
+        sql_user = SQLUser(
+            email=request.email,
+            name=request.name,
+            role="kunde",
+            password_hash=hash_password(request.password),
+            auth_provider="email",
+            picture=None,
+        )
 
-    return {
-        "token": token,
-        "user": {
-            "user_id": user_id,
-            "name": request.name,
-            "email": request.email,
-            "role": "kunde",
-            "picture": None,
-            "auth_provider": "email",
-        },
-    }
+        sql_db.add(sql_user)
+        sql_db.commit()
+        sql_db.refresh(sql_user)
 
+        token = create_jwt_token({
+            "user_id": str(sql_user.id),
+            "name": sql_user.name,
+            "email": sql_user.email,
+            "role": sql_user.role,
+            "picture": sql_user.picture,
+            "auth_provider": sql_user.auth_provider,
+        })
+
+        return {
+            "token": token,
+            "user": {
+                "user_id": str(sql_user.id),
+                "name": sql_user.name,
+                "email": sql_user.email,
+                "role": sql_user.role,
+                "picture": sql_user.picture,
+                "auth_provider": sql_user.auth_provider,
+            },
+        }
 
 @app.post("/api/auth/login")
 def login_with_email(request: EmailLoginRequest):
-    users_ref = db.collection("users")
-    docs = list(users_ref.where("email", "==", request.email).limit(1).stream())
-    if not docs:
-        raise HTTPException(status_code=401, detail="E-Mail oder Passwort falsch.")
+    with Session(engine) as sql_db:
+        sql_user = (
+            sql_db.query(SQLUser)
+            .filter(SQLUser.email == request.email)
+            .first()
+        )
 
-    doc = docs[0]
-    data = doc.to_dict()
-    password_hash = data.get("password_hash")
+        if not sql_user:
+            raise HTTPException(status_code=401, detail="E-Mail oder Passwort falsch.")
 
-    if not password_hash:
-        raise HTTPException(status_code=401, detail="Bitte melden Sie sich mit Google an.")
+        if not sql_user.password_hash:
+            raise HTTPException(status_code=401, detail="Bitte melden Sie sich mit Google an.")
 
-    if not verify_password(request.password, password_hash):
-        raise HTTPException(status_code=401, detail="E-Mail oder Passwort falsch.")
+        if not verify_password(request.password, sql_user.password_hash):
+            raise HTTPException(status_code=401, detail="E-Mail oder Passwort falsch.")
 
-    token = create_jwt_token({
-        "user_id": doc.id,
-        "name": data.get("name", ""),
-        "email": data["email"],
-        "role": data.get("role", "kunde"),
-        "picture": data.get("picture"),
-        "auth_provider": "email",
-    })
+        sql_user.last_login = datetime.utcnow()
+        sql_db.commit()
+        sql_db.refresh(sql_user)
 
-    return {
-        "token": token,
-        "user": {
-            "user_id": doc.id,
-            "name": data.get("name", ""),
-            "email": data["email"],
-            "role": data.get("role", "kunde"),
-            "picture": data.get("picture"),
-            "auth_provider": "email",
-        },
-    }
+        token = create_jwt_token({
+            "user_id": str(sql_user.id),
+            "name": sql_user.name or "",
+            "email": sql_user.email,
+            "role": sql_user.role or "kunde",
+            "picture": sql_user.picture,
+            "auth_provider": sql_user.auth_provider or "email",
+        })
+
+        return {
+            "token": token,
+            "user": {
+                "user_id": str(sql_user.id),
+                "name": sql_user.name or "",
+                "email": sql_user.email,
+                "role": sql_user.role or "kunde",
+                "picture": sql_user.picture,
+                "auth_provider": sql_user.auth_provider or "email",
+            },
+        }
 
 
 # ── Current User ─────────────────────────────────────────────────────────
@@ -442,61 +462,80 @@ def get_me(current_user: User = Depends(get_current_user)):
 
 @app.get("/api/users")
 def list_users(current_user: User = Depends(require_role("admin"))):
-    docs = db.collection("users").stream()
-    users = []
-    for doc in docs:
-        data = doc.to_dict()
-        users.append({
-            "user_id": doc.id,
-            "name": data.get("name", ""),
-            "email": data.get("email", ""),
-            "role": data.get("role", "kunde"),
-            "picture": data.get("picture"),
-            "auth_provider": data.get("auth_provider", "unknown"),
-            "created_at": data.get("created_at", ""),
-        })
-    return users
+    with Session(engine) as sql_db:
+        sql_users = sql_db.query(SQLUser).all()
+
+        return [
+            {
+                "user_id": str(u.id),
+                "name": u.name or "",
+                "email": u.email,
+                "role": u.role or "kunde",
+                "picture": u.picture,
+                "auth_provider": u.auth_provider or "unknown",
+                "created_at": u.created_at.isoformat() if u.created_at else "",
+                "last_login": u.last_login.isoformat() if u.last_login else "",
+            }
+            for u in sql_users
+        ]
 
 
 @app.get("/api/users/{user_id}")
 def get_user(user_id: str, current_user: User = Depends(require_role("admin"))):
-    doc = db.collection("users").document(user_id).get()
-    if not doc.exists:
-        raise HTTPException(status_code=404, detail="Benutzer nicht gefunden.")
-    data = doc.to_dict()
-    return {
-        "user_id": doc.id,
-        "name": data.get("name", ""),
-        "email": data.get("email", ""),
-        "role": data.get("role", "kunde"),
-        "picture": data.get("picture"),
-        "auth_provider": data.get("auth_provider", "unknown"),
-        "created_at": data.get("created_at", ""),
-    }
+    with Session(engine) as sql_db:
+        sql_user = sql_db.query(SQLUser).filter(SQLUser.id == int(user_id)).first()
 
+        if not sql_user:
+            raise HTTPException(status_code=404, detail="Benutzer nicht gefunden.")
+
+        return {
+            "user_id": str(sql_user.id),
+            "name": sql_user.name or "",
+            "email": sql_user.email,
+            "role": sql_user.role or "kunde",
+            "picture": sql_user.picture,
+            "auth_provider": sql_user.auth_provider or "unknown",
+            "created_at": sql_user.created_at.isoformat() if sql_user.created_at else "",
+            "last_login": sql_user.last_login.isoformat() if sql_user.last_login else "",
+        }
 
 @app.put("/api/users/{user_id}")
 def update_user(user_id: str, update: UserUpdate, current_user: User = Depends(require_role("admin"))):
-    doc_ref = db.collection("users").document(user_id)
-    doc = doc_ref.get()
-    if not doc.exists:
-        raise HTTPException(status_code=404, detail="Benutzer nicht gefunden.")
+    with Session(engine) as sql_db:
+        sql_user = sql_db.query(SQLUser).filter(SQLUser.id == int(user_id)).first()
 
-    update_data = {k: v for k, v in update.model_dump().items() if v is not None}
-    if "role" in update_data and update_data["role"] not in ("admin", "berater", "kunde"):
-        raise HTTPException(status_code=400, detail="Ungültige Rolle.")
+        if not sql_user:
+            raise HTTPException(status_code=404, detail="Benutzer nicht gefunden.")
 
-    doc_ref.update(update_data)
-    return {"message": "Benutzer aktualisiert.", "user_id": user_id}
+        update_data = {k: v for k, v in update.model_dump().items() if v is not None}
+
+        if "role" in update_data and update_data["role"] not in ("admin", "berater", "kunde"):
+            raise HTTPException(status_code=400, detail="Ungültige Rolle.")
+
+        if "name" in update_data:
+            sql_user.name = update_data["name"]
+        if "email" in update_data:
+            sql_user.email = update_data["email"]
+        if "role" in update_data:
+            sql_user.role = update_data["role"]
+
+        sql_db.commit()
+
+        return {"message": "Benutzer aktualisiert.", "user_id": user_id}
 
 
 @app.delete("/api/users/{user_id}")
 def delete_user(user_id: str, current_user: User = Depends(require_role("admin"))):
-    doc_ref = db.collection("users").document(user_id)
-    if not doc_ref.get().exists:
-        raise HTTPException(status_code=404, detail="Benutzer nicht gefunden.")
-    doc_ref.delete()
-    return {"message": "Benutzer gelöscht.", "user_id": user_id}
+    with Session(engine) as sql_db:
+        sql_user = sql_db.query(SQLUser).filter(SQLUser.id == int(user_id)).first()
+
+        if not sql_user:
+            raise HTTPException(status_code=404, detail="Benutzer nicht gefunden.")
+
+        sql_db.delete(sql_user)
+        sql_db.commit()
+
+        return {"message": "Benutzer gelöscht.", "user_id": user_id}
 
 
 # ── Berater: Client Management ──────────────────────────────────────────
