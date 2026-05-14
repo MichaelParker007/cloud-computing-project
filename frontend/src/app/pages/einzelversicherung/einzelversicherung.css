@@ -1,0 +1,79 @@
+.detail-page {
+  padding: 32px;
+}
+
+.back-button {
+  margin-bottom: 24px;
+  padding: 10px 18px;
+  border: none;
+  border-radius: 8px;
+  background: #222;
+  color: white;
+  cursor: pointer;
+}
+
+.detail-card {
+  background: #2b2100;
+  color: white;
+  padding: 32px;
+  border-radius: 12px;
+  border: 1px solid #7a5a00;
+  max-width: 900px;
+}
+
+.detail-card h1 {
+  margin-bottom: 24px;
+}
+
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.info-grid div {
+  background: #111;
+  border: 1px solid white;
+  padding: 16px;
+  border-radius: 8px;
+}
+
+.info-grid span {
+  display: block;
+  font-size: 14px;
+  opacity: 0.7;
+  margin-bottom: 8px;
+}
+
+.description {
+  margin-bottom: 32px;
+  line-height: 1.6;
+}
+
+.formular-box {
+  display: flex;
+  gap: 32px;
+}
+
+.formular-card {
+  width: 220px;
+  height: 180px;
+  border: 2px solid white;
+  background: #111;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.formular-card button {
+  padding: 10px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.error {
+  color: #ff5555;
+}

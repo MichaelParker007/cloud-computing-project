@@ -29,7 +29,9 @@
 
         <p class="price">{{ versicherung.monthly_price }} € / Monat</p>
 
-        <button class="details-btn">Details anzeigen</button>
+        <button class="details-btn" (click)="router.navigate(['/versicherungen', versicherung.doc_id])">
+          Details anzeigen
+        </button>
       </div>
     }
   </div>

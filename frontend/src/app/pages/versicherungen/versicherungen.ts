@@ -17,7 +17,7 @@ export class Versicherungen implements OnInit {
   errorMessage = '';
 
   constructor(
-    private router: Router,
+    public router: Router,
     private api: ApiService,
     private authService: AuthService,
   ) {}

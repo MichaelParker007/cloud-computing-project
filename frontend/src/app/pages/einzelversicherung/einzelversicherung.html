@@ -1,0 +1,50 @@
+<section class="detail-page">
+  <button class="back-button" (click)="goBack()">Zurück</button>
+
+  @if (isLoading) {
+    <p>Versicherung wird geladen...</p>
+  }
+
+  @if (errorMessage) {
+    <p class="error">{{ errorMessage }}</p>
+  }
+
+  @if (versicherung) {
+    <div class="detail-card">
+      <h1>{{ versicherung.name }}</h1>
+
+      <div class="info-grid">
+        <div>
+          <span>Typ</span>
+          <strong>{{ versicherung.category }}</strong>
+        </div>
+
+        <div>
+          <span>Anbieter</span>
+          <strong>{{ versicherung.provider }}</strong>
+        </div>
+
+        <div>
+          <span>Preis</span>
+          <strong>{{ versicherung.monthly_price }} € / Monat</strong>
+        </div>
+      </div>
+
+      <p class="description">{{ versicherung.description }}</p>
+
+      <div class="formular-box">
+        <div class="formular-card">
+          <h2>Formular 1</h2>
+          <p>Antrag / Vertragsformular</p>
+          <button>Herunterladen</button>
+        </div>
+
+        <div class="formular-card">
+          <h2>Formular 2</h2>
+          <p>Unterschriebenes Formular</p>
+          <button>Hochladen</button>
+        </div>
+      </div>
+    </div>
+  }
+</section>
