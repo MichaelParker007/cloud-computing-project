@@ -1,0 +1,9 @@
+runtime: python311
+
+entrypoint: gunicorn -w 1 -k uvicorn.workers.UvicornWorker main:app
+
+env_variables:
+  GOOGLE_CLIENT_ID: "348933755247-43f27tovii99ekmu8c80jveld7jn1k21.apps.googleusercontent.com"
+  FIRESTORE_PROJECT_ID: "project-64e4ee95-be58-4dea-8c0"
+  FIRESTORE_DATABASE: "versicherung-db"
+  FRONTEND_BUCKET: "versicherung-frontend-storage"
