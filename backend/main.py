@@ -16,6 +16,9 @@ from google.auth.transport import requests as google_requests
 from google.cloud import firestore, storage
 
 import jwt
+from sqlalchemy.orm import Session
+from database import engine
+from models import Base, User as SQLUser
 
 load_dotenv()
 
@@ -29,6 +32,7 @@ JWT_ALGORITHM = "HS256"
 JWT_EXPIRATION_HOURS = 24
 
 app = FastAPI(title="Versicherungen HUB API")
+Base.metadata.create_all(bind=engine)
 
 app.add_middleware(
     CORSMiddleware,
@@ -206,34 +210,34 @@ def verify_google_token(credential: str) -> dict:
 # ── User Lookup / Creation in Firestore ──────────────────────────────────
 
 def get_or_create_user_from_google(google_info: dict) -> User:
-    users_ref = db.collection("users")
-    query = users_ref.where("email", "==", google_info["email"]).limit(1)
-    docs = list(query.stream())
-
-    if docs:
-        data = docs[0].to_dict()
-        return User(
-            user_id=docs[0].id,
-            name=data.get("name", google_info["name"]),
-            email=data["email"],
-            role=data.get("role", "kunde"),
-            picture=data.get("picture", google_info.get("picture")),
-            auth_provider=data.get("auth_provider", "google"),
+    with Session(engine) as sql_db:
+        sql_user = (
+            sql_db.query(SQLUser)
+            .filter(SQLUser.google_sub == google_info["google_id"])
+            .first()
         )
 
-    user_id = str(uuid.uuid4())
-    user_data = {
-        "name": google_info["name"],
-        "email": google_info["email"],
-        "role": "kunde",
-        "picture": google_info.get("picture"),
-        "auth_provider": "google",
-        "google_id": google_info["google_id"],
-        "created_at": datetime.now(timezone.utc).isoformat(),
-    }
-    users_ref.document(user_id).set(user_data)
+        if not sql_user:
+            sql_user = SQLUser(
+                google_sub=google_info["google_id"],
+                email=google_info["email"],
+                name=google_info["name"],
+                picture=google_info.get("picture"),
+            )
+            sql_db.add(sql_user)
 
-    return User(user_id=user_id, auth_provider="google", **{k: v for k, v in user_data.items() if k in User.model_fields and k != "auth_provider"})
+        sql_user.last_login = datetime.utcnow()
+        sql_db.commit()
+        sql_db.refresh(sql_user)
+
+        return User(
+            user_id=str(sql_user.id),
+            name=sql_user.name or "",
+            email=sql_user.email,
+            role="kunde",
+            picture=sql_user.picture,
+            auth_provider="google",
+        )
 
 
 # ── Auth Dependency ──────────────────────────────────────────────────────
