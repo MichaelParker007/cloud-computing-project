@@ -528,6 +528,28 @@ def assign_client(req: AssignClientRequest, current_user: User = Depends(require
 def api_get_versicherungen(current_user: User = Depends(get_current_user)):
     return load_versicherungen_from_firestore()
 
+@app.get("/api/versicherungen/{doc_id}", response_model=Insurance)
+def api_get_versicherung_detail(
+    doc_id: str,
+    current_user: User = Depends(get_current_user),
+):
+    doc = db.collection("versicherungen").document(doc_id).get()
+
+    if not doc.exists:
+        raise HTTPException(status_code=404, detail="Versicherung nicht gefunden.")
+
+    data = doc.to_dict()
+
+    return {
+        "doc_id": doc.id,
+        "id": int(data.get("id", 0)),
+        "name": f"{data.get('typ', '')} von {data.get('anbieter', '')}",
+        "category": data.get("typ", ""),
+        "provider": data.get("anbieter", ""),
+        "monthly_price": float(data.get("preis", 0)),
+        "description": data.get("beschreibung", "Beschreibung folgt später."),
+    }
+
 
 @app.get("/versicherungen", response_model=list[Insurance])
 def get_versicherungen(current_user: User = Depends(get_current_user)):
