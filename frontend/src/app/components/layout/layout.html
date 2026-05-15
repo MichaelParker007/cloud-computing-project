@@ -1,4 +1,8 @@
 <div class="app-layout" [class.sidebar-collapsed]="!sidebarOpen">
+
+  <!-- Ladebalken: erscheint oben beim Seitenwechsel -->
+  <div class="nav-progress" [class.active]="isNavigating"></div>
+
   <!-- Sidebar -->
   <aside class="sidebar">
     <div class="sidebar-header">
@@ -68,7 +72,7 @@
     </div>
   </aside>
 
-  <!-- Main Content -->
+  <!-- Hauptbereich -->
   <div class="main-area">
     <header class="topbar">
       <button class="toggle-btn" (click)="toggleSidebar()" id="toggle-sidebar">
@@ -79,7 +83,9 @@
         <button class="logout-btn" (click)="onLogout()" id="logout-btn">Abmelden</button>
       </div>
     </header>
-    <main class="page-content">
+
+    <!-- Seiteninhalt mit Ein-/Ausblend-Animation -->
+    <main class="page-content" [class.page-enter]="pageEnter">
       <router-outlet />
     </main>
   </div>

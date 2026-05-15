@@ -18,12 +18,10 @@
           <span>Typ</span>
           <strong>{{ versicherung.category }}</strong>
         </div>
-
         <div>
           <span>Anbieter</span>
           <strong>{{ versicherung.provider }}</strong>
         </div>
-
         <div>
           <span>Preis</span>
           <strong>{{ versicherung.monthly_price }} € / Monat</strong>
@@ -32,11 +30,19 @@
 
       <p class="description">{{ versicherung.description }}</p>
 
+      <!-- Formular-Karten -->
       <div class="formular-box">
         <div class="formular-card">
           <h2>Formular 1</h2>
           <p>Antrag / Vertragsformular</p>
-          <button>Herunterladen</button>
+          @if (formStatus) {
+            <span class="status-badge status-{{ formStatus }}">{{ getStatusLabel() }}</span>
+          }
+          @if (isKunde()) {
+            <button class="form-toggle-btn" (click)="openFormEditor()">
+              {{ showFormEditor ? 'Schließen' : 'Online ausfüllen' }}
+            </button>
+          }
         </div>
 
         <div class="formular-card">
@@ -45,6 +51,192 @@
           <button>Hochladen</button>
         </div>
       </div>
+
+      <!-- ── Formular-Editor (nur für Kunden) ── -->
+      @if (showFormEditor && isKunde()) {
+        <div class="form-editor">
+          <div class="form-editor-header">
+            <h2>Formular 1 ausfüllen</h2>
+            @if (isSubmitted()) {
+              <div class="submitted-notice">
+                Dieses Formular wurde bereits abgeschickt und kann nicht mehr bearbeitet werden.
+              </div>
+            }
+          </div>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Vorname</label>
+              <input
+                [(ngModel)]="formData.vorname"
+                [attr.disabled]="isSubmitted() ? true : null"
+                placeholder="Max" />
+            </div>
+            <div class="form-group">
+              <label>Nachname</label>
+              <input
+                [(ngModel)]="formData.nachname"
+                [attr.disabled]="isSubmitted() ? true : null"
+                placeholder="Mustermann" />
+            </div>
+            <div class="form-group">
+              <label>Geburtsdatum</label>
+              <input
+                type="date"
+                [(ngModel)]="formData.geburtsdatum"
+                [attr.disabled]="isSubmitted() ? true : null" />
+            </div>
+            <div class="form-group">
+              <label>Straße &amp; Hausnummer</label>
+              <input
+                [(ngModel)]="formData.strasse"
+                [attr.disabled]="isSubmitted() ? true : null"
+                placeholder="Musterstraße 1" />
+            </div>
+            <div class="form-group">
+              <label>PLZ</label>
+              <input
+                [(ngModel)]="formData.plz"
+                [attr.disabled]="isSubmitted() ? true : null"
+                placeholder="12345" />
+            </div>
+            <div class="form-group">
+              <label>Ort</label>
+              <input
+                [(ngModel)]="formData.ort"
+                [attr.disabled]="isSubmitted() ? true : null"
+                placeholder="Musterstadt" />
+            </div>
+            <div class="form-group">
+              <label>Telefon</label>
+              <input
+                [(ngModel)]="formData.telefon"
+                [attr.disabled]="isSubmitted() ? true : null"
+                placeholder="+49 123 456789" />
+            </div>
+            <div class="form-group">
+              <label>E-Mail</label>
+              <input
+                type="email"
+                [(ngModel)]="formData.email"
+                [attr.disabled]="isSubmitted() ? true : null"
+                placeholder="max@beispiel.de" />
+            </div>
+            <div class="form-group">
+              <label>Versicherungsbeginn</label>
+              <input
+                type="date"
+                [(ngModel)]="formData.versicherungsbeginn"
+                [attr.disabled]="isSubmitted() ? true : null" />
+            </div>
+          </div>
+
+          <!-- Unterschrift -->
+          <div class="signature-section">
+            <h3>Unterschrift</h3>
+            @if (!isSubmitted()) {
+              <p class="signature-hint">Zeichnen Sie Ihre Unterschrift im Feld unten:</p>
+              <canvas
+                #signatureCanvas
+                class="signature-canvas"
+                (mousedown)="startDrawing($event)"
+                (mousemove)="draw($event)"
+                (mouseup)="stopDrawing()"
+                (mouseleave)="stopDrawing()"
+                (touchstart)="startDrawing($event)"
+                (touchmove)="draw($event)"
+                (touchend)="stopDrawing()">
+              </canvas>
+              <button class="clear-btn" (click)="clearSignature()">Unterschrift löschen</button>
+            } @else if (signatureData) {
+              <img [src]="signatureData" class="signature-preview" alt="Unterschrift" />
+            } @else {
+              <p class="no-signature">Keine Unterschrift vorhanden.</p>
+            }
+          </div>
+
+          @if (formMessage) {
+            <p class="form-message"
+               [class.success]="formMessage.includes('erfolgreich') || formMessage.includes('gespeichert')">
+              {{ formMessage }}
+            </p>
+          }
+
+          @if (!isSubmitted()) {
+            <div class="form-actions">
+              <button class="save-btn" (click)="saveForm()" [disabled]="isSaving">
+                {{ isSaving ? 'Wird gespeichert…' : 'Speichern' }}
+              </button>
+              <button class="submit-btn" (click)="submitForm()" [disabled]="isSubmitting">
+                {{ isSubmitting ? 'Wird abgeschickt…' : 'Formular abschicken' }}
+              </button>
+            </div>
+          }
+        </div>
+      }
+
+      <!-- ── Berater / Admin: Einreichungsliste ── -->
+      @if (isBerater()) {
+        <div class="submissions-section">
+          <h2>Eingereichte Formulare</h2>
+          @if (formSubmissions.length === 0) {
+            <p class="no-submissions">Noch keine Formulare für diese Versicherung eingereicht.</p>
+          }
+          @for (sub of formSubmissions; track sub.form_id) {
+            <div
+              class="submission-row"
+              (click)="viewSubmission(sub)"
+              [class.active]="selectedSubmission?.form_id === sub.form_id">
+              <div class="submission-info">
+                <strong>{{ sub.user_name || 'Unbekannt' }}</strong>
+                <span>{{ sub.user_email }}</span>
+              </div>
+              <div>
+                @if (sub.submitted_at) {
+                  <span class="submission-date">
+                    {{ sub.submitted_at | date: 'dd.MM.yyyy, HH:mm' }} Uhr
+                  </span>
+                }
+              </div>
+              <span class="status-badge status-{{ sub.status }}">
+                {{ getStatusLabel(sub.status) }}
+              </span>
+            </div>
+          }
+
+          @if (selectedSubmission) {
+            <div class="submission-detail">
+              <h3>Formular von {{ selectedSubmission.user_name }}</h3>
+              <p class="submission-meta">
+                {{ selectedSubmission.user_email }} &nbsp;·&nbsp;
+                Status:
+                <span class="status-badge status-{{ selectedSubmission.status }}">
+                  {{ getStatusLabel(selectedSubmission.status) }}
+                </span>
+              </p>
+
+              <div class="form-grid readonly-grid">
+                @for (field of getFormFields(selectedSubmission.form_data); track field.key) {
+                  <div class="form-group">
+                    <label>{{ field.label }}</label>
+                    <div class="readonly-value">{{ field.value || '—' }}</div>
+                  </div>
+                }
+              </div>
+
+              @if (selectedSubmission.signature_data) {
+                <div class="signature-section">
+                  <h4>Unterschrift</h4>
+                  <img
+                    [src]="selectedSubmission.signature_data"
+                    class="signature-preview"
+                    alt="Unterschrift" />
+                </div>
+              }
+            </div>
+          }
+        </div>
+      }
     </div>
   }
 </section>

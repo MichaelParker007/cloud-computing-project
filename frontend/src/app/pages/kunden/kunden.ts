@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../services/api.service';
@@ -9,17 +9,24 @@ import { ApiService } from '../../services/api.service';
   templateUrl: './kunden.html',
   styleUrl: './kunden.css',
 })
-export class Kunden implements OnInit {
+export class Kunden implements OnInit, OnDestroy {
   clients: any[] = [];
   isLoading = true;
   newClientEmail = '';
   showAssignForm = false;
   message = '';
 
+  private refreshInterval?: ReturnType<typeof setInterval>;
+
   constructor(private api: ApiService) {}
 
   ngOnInit(): void {
     this.loadClients();
+    this.refreshInterval = setInterval(() => this.loadClients(), 30000);
+  }
+
+  ngOnDestroy(): void {
+    clearInterval(this.refreshInterval);
   }
 
   loadClients(): void {

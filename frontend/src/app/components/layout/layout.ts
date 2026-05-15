@@ -1,6 +1,15 @@
-import { Component } from '@angular/core';
+import { ChangeDetectorRef, Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
+import {
+  RouterOutlet,
+  RouterLink,
+  RouterLinkActive,
+  Router,
+  NavigationStart,
+  NavigationEnd,
+  NavigationCancel,
+  NavigationError,
+} from '@angular/router';
 import { AuthService, UserInfo } from '../../services/auth.service';
 
 @Component({
@@ -13,8 +22,32 @@ export class Layout {
   sidebarOpen = true;
   user: UserInfo | null = null;
 
-  constructor(private authService: AuthService) {
+  isNavigating = false;
+  pageEnter = false;
+
+  constructor(
+    private authService: AuthService,
+    private router: Router,
+    private cdr: ChangeDetectorRef,
+  ) {
     this.authService.currentUser$.subscribe((u) => (this.user = u));
+
+    this.router.events.subscribe((event) => {
+      if (event instanceof NavigationStart) {
+        this.isNavigating = true;
+        this.pageEnter = false;
+        this.cdr.detectChanges();
+      } else if (
+        event instanceof NavigationEnd ||
+        event instanceof NavigationCancel ||
+        event instanceof NavigationError
+      ) {
+        this.isNavigating = false;
+        setTimeout(() => {
+          this.pageEnter = true;
+        }, 0);
+      }
+    });
   }
 
   get isAdmin(): boolean {

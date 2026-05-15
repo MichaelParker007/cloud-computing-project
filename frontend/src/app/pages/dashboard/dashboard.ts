@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { AuthService, UserInfo } from '../../services/auth.service';
@@ -10,9 +10,11 @@ import { ApiService } from '../../services/api.service';
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.css',
 })
-export class Dashboard implements OnInit {
+export class Dashboard implements OnInit, OnDestroy {
   user: UserInfo | null = null;
   stats = { versicherungen: 0, folders: 0, files: 0, users: 0 };
+
+  private refreshInterval?: ReturnType<typeof setInterval>;
 
   constructor(
     private authService: AuthService,
@@ -22,6 +24,11 @@ export class Dashboard implements OnInit {
   ngOnInit(): void {
     this.user = this.authService.getCurrentUser();
     this.loadStats();
+    this.refreshInterval = setInterval(() => this.loadStats(), 30000);
+  }
+
+  ngOnDestroy(): void {
+    clearInterval(this.refreshInterval);
   }
 
   get roleName(): string {

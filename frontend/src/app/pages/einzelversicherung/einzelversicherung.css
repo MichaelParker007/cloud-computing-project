@@ -12,6 +12,10 @@
   cursor: pointer;
 }
 
+.back-button:hover {
+  background: #333;
+}
+
 .detail-card {
   background: #2b2100;
   color: white;
@@ -51,20 +55,26 @@
   line-height: 1.6;
 }
 
+/* ── Formular-Karten ── */
+
 .formular-box {
   display: flex;
   gap: 32px;
+  flex-wrap: wrap;
+  margin-bottom: 40px;
 }
 
 .formular-card {
   width: 220px;
-  height: 180px;
+  min-height: 180px;
   border: 2px solid white;
   background: #111;
   padding: 24px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  gap: 8px;
+  border-radius: 8px;
 }
 
 .formular-card button {
@@ -72,6 +82,330 @@
   border: none;
   border-radius: 6px;
   cursor: pointer;
+  background: #7a5a00;
+  color: white;
+  font-size: 14px;
+}
+
+.formular-card button:hover {
+  background: #a07800;
+}
+
+.form-toggle-btn {
+  background: #7a5a00 !important;
+  color: white !important;
+}
+
+/* ── Status-Badge ── */
+
+.status-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+.status-offen {
+  background: #4a3800;
+  color: #f5c518;
+  border: 1px solid #f5c518;
+}
+
+.status-abgeschickt {
+  background: #003060;
+  color: #60b0ff;
+  border: 1px solid #60b0ff;
+}
+
+.status-bearbeitet {
+  background: #003820;
+  color: #50e090;
+  border: 1px solid #50e090;
+}
+
+/* ── Formular-Editor ── */
+
+.form-editor {
+  margin-top: 8px;
+  background: #1a1500;
+  border: 1px solid #7a5a00;
+  border-radius: 10px;
+  padding: 28px;
+}
+
+.form-editor-header {
+  margin-bottom: 24px;
+}
+
+.form-editor-header h2 {
+  margin: 0 0 12px;
+}
+
+.submitted-notice {
+  background: #003060;
+  color: #60b0ff;
+  border: 1px solid #60b0ff;
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 14px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-group label {
+  font-size: 13px;
+  opacity: 0.75;
+  font-weight: 500;
+}
+
+.form-group input {
+  background: #111;
+  border: 1px solid #555;
+  border-radius: 6px;
+  padding: 10px 12px;
+  color: white;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.form-group input:focus {
+  border-color: #f5c518;
+}
+
+.form-group input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.readonly-value {
+  background: #111;
+  border: 1px solid #333;
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-size: 14px;
+  min-height: 38px;
+  color: #ccc;
+}
+
+.readonly-grid .form-group input {
+  pointer-events: none;
+}
+
+/* ── Unterschrift ── */
+
+.signature-section {
+  margin-top: 8px;
+  margin-bottom: 24px;
+}
+
+.signature-section h3,
+.signature-section h4 {
+  margin-bottom: 10px;
+}
+
+.signature-hint {
+  font-size: 13px;
+  opacity: 0.65;
+  margin-bottom: 8px;
+}
+
+.signature-canvas {
+  display: block;
+  width: 100%;
+  height: 140px;
+  background: #fff;
+  border-radius: 6px;
+  cursor: crosshair;
+  border: 2px solid #7a5a00;
+  touch-action: none;
+}
+
+.signature-preview {
+  display: block;
+  max-width: 100%;
+  height: 140px;
+  object-fit: contain;
+  background: #fff;
+  border-radius: 6px;
+  border: 2px solid #444;
+}
+
+.no-signature {
+  font-size: 13px;
+  opacity: 0.55;
+  font-style: italic;
+}
+
+.clear-btn {
+  margin-top: 8px;
+  padding: 6px 14px;
+  background: #333;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.clear-btn:hover {
+  background: #444;
+}
+
+/* ── Aktions-Buttons ── */
+
+.form-actions {
+  display: flex;
+  gap: 16px;
+  margin-top: 8px;
+}
+
+.save-btn {
+  padding: 12px 24px;
+  background: #333;
+  color: white;
+  border: 1px solid #555;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.save-btn:hover:not(:disabled) {
+  background: #444;
+}
+
+.submit-btn {
+  padding: 12px 28px;
+  background: #7a5a00;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.submit-btn:hover:not(:disabled) {
+  background: #a07800;
+}
+
+.save-btn:disabled,
+.submit-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.form-message {
+  margin-top: 12px;
+  padding: 10px 14px;
+  border-radius: 6px;
+  font-size: 14px;
+  background: #3a1a1a;
+  color: #ff8888;
+  border: 1px solid #883333;
+}
+
+.form-message.success {
+  background: #003820;
+  color: #50e090;
+  border-color: #50e090;
+}
+
+/* ── Berater: Einreichungs-Liste ── */
+
+.submissions-section {
+  margin-top: 40px;
+  border-top: 1px solid #7a5a00;
+  padding-top: 28px;
+}
+
+.submissions-section h2 {
+  margin-bottom: 20px;
+}
+
+.no-submissions {
+  opacity: 0.55;
+  font-size: 14px;
+  font-style: italic;
+}
+
+.submission-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: #1a1500;
+  border: 1px solid #444;
+  border-radius: 8px;
+  padding: 14px 20px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.submission-row:hover,
+.submission-row.active {
+  border-color: #f5c518;
+  background: #221a00;
+}
+
+.submission-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.submission-info strong {
+  font-size: 15px;
+}
+
+.submission-info span {
+  font-size: 13px;
+  opacity: 0.65;
+}
+
+.submission-date {
+  font-size: 13px;
+  opacity: 0.6;
+  white-space: nowrap;
+}
+
+/* ── Einreichungs-Detail ── */
+
+.submission-detail {
+  margin-top: 20px;
+  background: #1a1500;
+  border: 1px solid #7a5a00;
+  border-radius: 10px;
+  padding: 24px;
+}
+
+.submission-detail h3 {
+  margin: 0 0 8px;
+}
+
+.submission-meta {
+  font-size: 13px;
+  opacity: 0.7;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .error {

@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../services/api.service';
@@ -9,16 +9,23 @@ import { ApiService } from '../../services/api.service';
   templateUrl: './benutzer.html',
   styleUrl: './benutzer.css',
 })
-export class Benutzer implements OnInit {
+export class Benutzer implements OnInit, OnDestroy {
   users: any[] = [];
   isLoading = true;
   editingUser: any = null;
   editRole = '';
 
+  private refreshInterval?: ReturnType<typeof setInterval>;
+
   constructor(private api: ApiService) {}
 
   ngOnInit(): void {
     this.loadUsers();
+    this.refreshInterval = setInterval(() => this.loadUsers(), 30000);
+  }
+
+  ngOnDestroy(): void {
+    clearInterval(this.refreshInterval);
   }
 
   loadUsers(): void {

@@ -121,4 +121,31 @@ export class ApiService {
       headers: this.getHeaders(),
     });
   }
+
+  // Form Submissions
+  getFormulare(versicherungId: string): Observable<any[]> {
+    return this.http.get<any[]>(`${this.baseUrl}/versicherungen/${versicherungId}/formulare`, {
+      headers: this.getHeaders(),
+    });
+  }
+
+  saveFormular(versicherungId: string, body: { form_data: any; signature_data?: string | null }): Observable<any> {
+    return this.http.post(`${this.baseUrl}/versicherungen/${versicherungId}/formulare/save`, body, {
+      headers: this.getHeaders(),
+    });
+  }
+
+  submitFormular(versicherungId: string, formId: string): Observable<any> {
+    return this.http.post(
+      `${this.baseUrl}/versicherungen/${versicherungId}/formulare/${formId}/submit`,
+      {},
+      { headers: this.getHeaders() },
+    );
+  }
+
+  getFormularDetail(versicherungId: string, formId: string): Observable<any> {
+    return this.http.get(`${this.baseUrl}/versicherungen/${versicherungId}/formulare/${formId}`, {
+      headers: this.getHeaders(),
+    });
+  }
 }

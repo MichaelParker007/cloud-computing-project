@@ -599,6 +599,121 @@ def get_versicherungen(current_user: User = Depends(get_current_user)):
     return load_versicherungen_from_firestore()
 
 
+# ── Form Submissions ─────────────────────────────────────────────────────
+
+class FormSubmissionSave(BaseModel):
+    form_data: dict
+    signature_data: Optional[str] = None
+
+
+@app.get("/api/versicherungen/{doc_id}/formulare")
+def get_form_submissions(doc_id: str, current_user: User = Depends(get_current_user)):
+    query = db.collection("form_submissions").where("versicherung_id", "==", doc_id)
+    if current_user.role == "kunde":
+        query = query.where("user_id", "==", current_user.user_id)
+    docs = query.stream()
+    result = []
+    for doc in docs:
+        data = doc.to_dict()
+        result.append({
+            "form_id": doc.id,
+            "versicherung_id": data.get("versicherung_id", ""),
+            "user_id": data.get("user_id", ""),
+            "user_name": data.get("user_name", ""),
+            "user_email": data.get("user_email", ""),
+            "status": data.get("status", "offen"),
+            "submitted_at": data.get("submitted_at", ""),
+            "created_at": data.get("created_at", ""),
+        })
+    return result
+
+
+@app.post("/api/versicherungen/{doc_id}/formulare/save")
+def save_form_submission(
+    doc_id: str,
+    body: FormSubmissionSave,
+    current_user: User = Depends(get_current_user),
+):
+    existing = list(
+        db.collection("form_submissions")
+        .where("versicherung_id", "==", doc_id)
+        .where("user_id", "==", current_user.user_id)
+        .limit(1)
+        .stream()
+    )
+    now = datetime.now(timezone.utc).isoformat()
+    payload = {
+        "versicherung_id": doc_id,
+        "user_id": current_user.user_id,
+        "user_name": current_user.name,
+        "user_email": current_user.email,
+        "form_data": body.form_data,
+        "signature_data": body.signature_data,
+        "updated_at": now,
+    }
+    if existing:
+        form_id = existing[0].id
+        existing_status = existing[0].to_dict().get("status", "offen")
+        if existing_status not in ("abgeschickt", "bearbeitet"):
+            payload["status"] = "offen"
+        db.collection("form_submissions").document(form_id).update(payload)
+        return {"message": "Formular gespeichert.", "form_id": form_id, "status": existing_status}
+    else:
+        form_id = str(uuid.uuid4())
+        payload["status"] = "offen"
+        payload["created_at"] = now
+        db.collection("form_submissions").document(form_id).set(payload)
+        return {"message": "Formular gespeichert.", "form_id": form_id, "status": "offen"}
+
+
+@app.post("/api/versicherungen/{doc_id}/formulare/{form_id}/submit")
+def submit_form_submission(
+    doc_id: str,
+    form_id: str,
+    current_user: User = Depends(get_current_user),
+):
+    doc_ref = db.collection("form_submissions").document(form_id)
+    doc = doc_ref.get()
+    if not doc.exists:
+        raise HTTPException(status_code=404, detail="Formular nicht gefunden.")
+    data = doc.to_dict()
+    if data.get("user_id") != current_user.user_id and current_user.role not in ("admin", "berater"):
+        raise HTTPException(status_code=403, detail="Zugriff verweigert.")
+    now = datetime.now(timezone.utc).isoformat()
+    doc_ref.update({"status": "abgeschickt", "submitted_at": now})
+    return {"message": "Formular abgeschickt.", "status": "abgeschickt"}
+
+
+@app.get("/api/versicherungen/{doc_id}/formulare/{form_id}")
+def get_form_submission_detail(
+    doc_id: str,
+    form_id: str,
+    current_user: User = Depends(get_current_user),
+):
+    doc_ref = db.collection("form_submissions").document(form_id)
+    doc = doc_ref.get()
+    if not doc.exists:
+        raise HTTPException(status_code=404, detail="Formular nicht gefunden.")
+    data = doc.to_dict()
+    # Berater/Admin viewing a submitted form → auto-change status to "bearbeitet"
+    if current_user.role in ("berater", "admin") and data.get("status") == "abgeschickt":
+        now = datetime.now(timezone.utc).isoformat()
+        doc_ref.update({"status": "bearbeitet", "viewed_by": current_user.user_id, "viewed_at": now})
+        data["status"] = "bearbeitet"
+    return {
+        "form_id": doc.id,
+        "versicherung_id": data.get("versicherung_id", ""),
+        "user_id": data.get("user_id", ""),
+        "user_name": data.get("user_name", ""),
+        "user_email": data.get("user_email", ""),
+        "form_data": data.get("form_data", {}),
+        "signature_data": data.get("signature_data"),
+        "status": data.get("status", "offen"),
+        "submitted_at": data.get("submitted_at", ""),
+        "created_at": data.get("created_at", ""),
+    }
+
+
 @app.get("/insurances", response_model=list[Insurance])
 def get_insurances(current_user: User = Depends(get_current_user)):
     return load_versicherungen_from_firestore()

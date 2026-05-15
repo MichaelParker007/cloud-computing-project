@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../services/api.service';
@@ -10,7 +10,7 @@ import { AuthService } from '../../services/auth.service';
   templateUrl: './dateien.html',
   styleUrl: './dateien.css',
 })
-export class Dateien implements OnInit {
+export class Dateien implements OnInit, OnDestroy {
   folders: any[] = [];
   files: any[] = [];
   currentFolderId: string | null = null;
@@ -20,12 +20,19 @@ export class Dateien implements OnInit {
   isLoading = true;
   userRole = '';
 
+  private refreshInterval?: ReturnType<typeof setInterval>;
+
   constructor(private api: ApiService, private auth: AuthService) {
     this.userRole = auth.getUserRole();
   }
 
   ngOnInit(): void {
     this.loadContent();
+    this.refreshInterval = setInterval(() => this.loadContent(), 30000);
+  }
+
+  ngOnDestroy(): void {
+    clearInterval(this.refreshInterval);
   }
 
   get canManage(): boolean {

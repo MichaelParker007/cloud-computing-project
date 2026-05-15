@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ApiService } from '../../services/api.service';
 import { AuthService } from '../../services/auth.service';
@@ -9,13 +9,24 @@ import { AuthService } from '../../services/auth.service';
   templateUrl: './pakete.html',
   styleUrl: './pakete.css',
 })
-export class Pakete implements OnInit {
+export class Pakete implements OnInit, OnDestroy {
   packages: any[] = [];
   isLoading = true;
+
+  private refreshInterval?: ReturnType<typeof setInterval>;
 
   constructor(private api: ApiService, private auth: AuthService) {}
 
   ngOnInit(): void {
+    this.loadPackages();
+    this.refreshInterval = setInterval(() => this.loadPackages(), 30000);
+  }
+
+  ngOnDestroy(): void {
+    clearInterval(this.refreshInterval);
+  }
+
+  loadPackages(): void {
     this.api.getPackages().subscribe({
       next: (data) => { this.packages = data; this.isLoading = false; },
       error: () => { this.isLoading = false; },

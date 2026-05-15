@@ -1,7 +1,6 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { AuthService } from '../../services/auth.service';
 import { ApiService } from '../../services/api.service';
 
@@ -11,10 +10,12 @@ import { ApiService } from '../../services/api.service';
   templateUrl: './versicherungen.html',
   styleUrl: './versicherungen.css',
 })
-export class Versicherungen implements OnInit {
+export class Versicherungen implements OnInit, OnDestroy {
   versicherungen: any[] = [];
   isLoading = false;
   errorMessage = '';
+
+  private refreshInterval?: ReturnType<typeof setInterval>;
 
   constructor(
     public router: Router,
@@ -28,6 +29,11 @@ export class Versicherungen implements OnInit {
       return;
     }
     this.loadVersicherungen();
+    this.refreshInterval = setInterval(() => this.loadVersicherungen(), 30000);
+  }
+
+  ngOnDestroy(): void {
+    clearInterval(this.refreshInterval);
   }
 
   loadVersicherungen(): void {
