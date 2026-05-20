@@ -1,5 +1,11 @@
 # README – Teilabgabe 2: Persistence
 
+Houssam Sakah (hosakahx) 
+Pawel Gorka (pagorkax) 
+Mykhailo Fakliier (myfaklii) 
+Link auf das GitHub Repo: https://github.com/MichaelParker007/cloud-computing-project.git README_Abgabe2.md ist in GitHub Repo als Datei.
+Hier ist auch die Doku ebenfalls in der Abgabedatei.
+
 ## Gesamtarchitektur
 
 Die Anwendung besteht aus einer gemeinsamen Cloud-Architektur mit drei Persistenzmechanismen.
