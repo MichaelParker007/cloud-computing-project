@@ -1,0 +1,75 @@
+.archiv-page h1 { font-size: 28px; font-weight: 700; margin: 0; }
+.page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; }
+
+.search-input {
+  padding: 10px 16px; min-width: 280px; background: rgba(15,23,42,0.6);
+  border: 1px solid rgba(71,85,105,0.4); border-radius: 10px; color: white;
+  font-size: 14px; outline: none; transition: border-color 0.15s;
+}
+.search-input:focus { border-color: #3b82f6; }
+.search-input::placeholder { color: #64748b; }
+
+/* ── Ordner-Liste ── */
+.folder-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
+
+.archive-folder {
+  background: rgba(30,41,59,0.6); border: 1px solid rgba(71,85,105,0.3); border-radius: 12px;
+  padding: 16px 18px; display: flex; align-items: center; gap: 14px;
+  cursor: pointer; transition: all 0.15s;
+}
+.archive-folder:hover { background: rgba(37,99,235,0.08); border-color: rgba(59,130,246,0.3); transform: translateY(-1px); }
+
+.folder-icon { font-size: 30px; flex-shrink: 0; }
+.folder-info { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
+.folder-name { font-size: 15px; font-weight: 600; color: #f1f5f9; }
+.folder-provider { font-size: 13px; color: #94a3b8; }
+
+.archive-id {
+  background: rgba(219, 234, 254, 0.12); color: #60a5fa; padding: 5px 10px;
+  border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap;
+  font-family: ui-monospace, "SFMono-Regular", monospace; letter-spacing: 0.5px;
+}
+.archive-id.inline { padding: 2px 8px; }
+
+/* ── Geöffneter Ordner ── */
+.folder-header { margin-bottom: 16px; }
+.back-btn { padding-left: 0; }
+
+.folder-title { display: flex; align-items: center; gap: 16px; margin-bottom: 28px; flex-wrap: wrap; }
+.folder-icon-lg { font-size: 40px; }
+.folder-title-text { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 0; }
+.folder-sub { color: #94a3b8; font-size: 14px; }
+
+.btn {
+  padding: 10px 18px; border-radius: 10px; font-size: 14px; font-weight: 500;
+  cursor: pointer; border: none; transition: all 0.15s; display: inline-flex; align-items: center; gap: 6px;
+}
+.btn-primary { background: linear-gradient(135deg, #2563eb, #7c3aed); color: white; }
+.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(37,99,235,0.3); }
+.btn-ghost { background: transparent; color: #94a3b8; }
+.btn-ghost:hover { color: #cbd5e1; }
+.upload-label { cursor: pointer; }
+
+.section-label { font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: #64748b; margin-bottom: 12px; }
+
+.items-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+
+.item-card {
+  background: rgba(30,41,59,0.6); border: 1px solid rgba(71,85,105,0.3); border-radius: 12px;
+  padding: 16px 18px; display: flex; align-items: center; gap: 12px; transition: all 0.15s;
+}
+.file-card:hover { border-color: rgba(71,85,105,0.5); }
+.item-icon { font-size: 28px; flex-shrink: 0; }
+.item-name { font-size: 14px; font-weight: 500; word-break: break-all; }
+.file-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.file-meta { font-size: 12px; color: #64748b; }
+
+.delete-btn {
+  background: transparent; border: none; cursor: pointer; font-size: 16px;
+  opacity: 0.4; transition: opacity 0.15s; padding: 4px; margin-left: auto;
+}
+.delete-btn:hover { opacity: 1; }
+
+.empty-state { text-align: center; padding: 60px 20px; color: #64748b; }
+.empty-icon { font-size: 48px; display: block; margin-bottom: 12px; }
+.info { color: #94a3b8; }

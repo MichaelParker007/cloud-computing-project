@@ -4,7 +4,8 @@ import { Layout } from './components/layout/layout';
 import { Dashboard } from './pages/dashboard/dashboard';
 import { Versicherungen } from './pages/versicherungen/versicherungen';
 import { Pakete } from './pages/pakete/pakete';
-import { Dateien } from './pages/dateien/dateien';
+import { Archiv } from './pages/archiv/archiv';
+import { Vorschlaege } from './pages/vorschlaege/vorschlaege';
 import { Benutzer } from './pages/benutzer/benutzer';
 import { Kunden } from './pages/kunden/kunden';
 import { authGuard, roleGuard } from './guards/auth.guard';
@@ -22,7 +23,9 @@ export const routes: Routes = [
       { path: 'versicherungen', component: Versicherungen },
       { path: 'versicherungen/:id', component: Einzelversicherung },
       { path: 'pakete', component: Pakete },
-      { path: 'dateien', component: Dateien },
+      { path: 'archiv', component: Archiv },
+      { path: 'archiv/:versicherungId', component: Archiv },
+      { path: 'vorschlaege', component: Vorschlaege },
       { path: 'kunden', component: Kunden, canActivate: [roleGuard('admin', 'berater')] },
       { path: 'benutzer', component: Benutzer, canActivate: [roleGuard('admin')] },
     ],

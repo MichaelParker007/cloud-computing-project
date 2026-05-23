@@ -1,0 +1,90 @@
+<div class="archiv-page">
+
+  <!-- ══ Liste aller Versicherungs-Ordner ══ -->
+  @if (!selected) {
+    <div class="page-header">
+      <h1>🗄️ Archiv</h1>
+      <input
+        type="text"
+        class="search-input"
+        [(ngModel)]="searchTerm"
+        placeholder="Suche nach Name, Anbieter oder ID..."
+        id="archiv-search"
+      />
+    </div>
+
+    @if (isLoading && folders.length === 0) {
+      <p class="info">Archiv wird geladen...</p>
+    }
+
+    @if (!isLoading && folders.length === 0) {
+      <div class="empty-state">
+        <span class="empty-icon">🗄️</span>
+        <p>Keine Versicherungen im Archiv vorhanden.</p>
+      </div>
+    }
+
+    @if (filteredFolders.length > 0) {
+      <div class="folder-grid">
+        @for (folder of filteredFolders; track folder.docId) {
+          <div class="archive-folder" (click)="selectFolder(folder)" id="archiv-folder-{{ folder.docId }}">
+            <span class="folder-icon">📁</span>
+            <div class="folder-info">
+              <span class="folder-name">{{ folder.name }}</span>
+              <span class="folder-provider">{{ folder.provider }}</span>
+            </div>
+            <span class="archive-id">{{ folder.archiveId }}</span>
+          </div>
+        }
+      </div>
+    }
+
+    @if (!isLoading && folders.length > 0 && filteredFolders.length === 0) {
+      <p class="info">Keine Treffer für „{{ searchTerm }}".</p>
+    }
+  }
+
+  <!-- ══ Geöffneter Ordner einer Versicherung ══ -->
+  @if (selected) {
+    <div class="folder-header">
+      <button class="btn btn-ghost back-btn" (click)="backToList()" id="archiv-back">← Zurück zum Archiv</button>
+    </div>
+
+    <div class="folder-title">
+      <span class="folder-icon-lg">📂</span>
+      <div class="folder-title-text">
+        <h1>{{ selected.name }}</h1>
+        <span class="folder-sub">{{ selected.provider }} · <span class="archive-id inline">{{ selected.archiveId }}</span></span>
+      </div>
+      @if (canManage) {
+        <label class="btn btn-primary upload-label" id="archiv-upload-btn">
+          📤 Datei hochladen
+          <input type="file" (change)="onFileSelected($event)" hidden />
+        </label>
+      }
+    </div>
+
+    @if (files.length > 0) {
+      <div class="section-label">Dokumente</div>
+      <div class="items-grid">
+        @for (file of files; track file.file_id) {
+          <div class="item-card file-card">
+            <span class="item-icon">📄</span>
+            <div class="file-info">
+              <span class="item-name">{{ file.name }}</span>
+              <span class="file-meta">{{ formatSize(file.size) }} · {{ file.content_type }}</span>
+            </div>
+            @if (canManage) {
+              <button class="delete-btn" (click)="deleteFile(file.file_id)">🗑</button>
+            }
+          </div>
+        }
+      </div>
+    } @else {
+      <div class="empty-state">
+        <span class="empty-icon">📭</span>
+        <p>Noch keine Dokumente in diesem Ordner.</p>
+      </div>
+    }
+  }
+</div>

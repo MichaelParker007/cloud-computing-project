@@ -1,19 +1,19 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 import { ApiService } from '../../services/api.service';
 
 @Component({
   selector: 'app-versicherungen',
-  imports: [CommonModule],
+  imports: [CommonModule, RouterLink],
   templateUrl: './versicherungen.html',
   styleUrl: './versicherungen.css',
 })
 export class Versicherungen implements OnInit, OnDestroy {
-  versicherungen: any[] = [];
-  isLoading = false;
-  errorMessage = '';
+  meineVersicherungen: any[] = [];
+  isLoading = true;
+  selectedDetail: any = null;
 
   private refreshInterval?: ReturnType<typeof setInterval>;
 
@@ -28,29 +28,32 @@ export class Versicherungen implements OnInit, OnDestroy {
       this.router.navigate(['/login']);
       return;
     }
-    this.loadVersicherungen();
-    this.refreshInterval = setInterval(() => this.loadVersicherungen(), 30000);
+    this.loadMeineVersicherungen();
+    this.refreshInterval = setInterval(() => this.loadMeineVersicherungen(), 30000);
   }
 
   ngOnDestroy(): void {
     clearInterval(this.refreshInterval);
   }
 
-  loadVersicherungen(): void {
+  loadMeineVersicherungen(): void {
     this.isLoading = true;
-    this.errorMessage = '';
-
-    this.api.getVersicherungen().subscribe({
+    this.api.getVorschlaege().subscribe({
       next: (data) => {
-        this.versicherungen = data;
+        this.meineVersicherungen = data.filter((v: any) => v.status === 'angenommen');
         this.isLoading = false;
       },
-      error: (err) => {
-        console.error('Fehler beim Laden der Versicherungen:', err);
-        this.errorMessage = 'Versicherungen konnten nicht geladen werden.';
-        this.versicherungen = [];
+      error: () => {
         this.isLoading = false;
       },
     });
+  }
+
+  openDetail(v: any): void {
+    this.selectedDetail = v;
+  }
+
+  closeDetail(): void {
+    this.selectedDetail = null;
   }
 }

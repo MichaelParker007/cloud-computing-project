@@ -1,0 +1,258 @@
+<div class="vorschlaege-page">
+  <div class="page-header">
+    <h1>💡 Vorschläge</h1>
+    @if (canManage) {
+      <button class="btn btn-primary" (click)="showCreateForm = !showCreateForm" id="toggle-create">
+        + Neuer Vorschlag
+      </button>
+    }
+  </div>
+
+  @if (createMessage) {
+    <p class="toast" [class.success]="createMessage.includes('gesendet')">{{ createMessage }}</p>
+  }
+
+  <!-- ══ Berater: Vorschlag erstellen ══ -->
+  @if (showCreateForm && canManage) {
+    <div class="create-form">
+      <h3>Vorschlag an Kunden senden</h3>
+      <div class="create-grid">
+        <div class="form-group">
+          <label>Versicherung</label>
+          <select [(ngModel)]="newVorschlag.versicherung_id" id="select-versicherung">
+            <option value="">— Versicherung wählen —</option>
+            @for (v of versicherungen; track v.doc_id) {
+              <option [value]="v.doc_id">{{ v.name }} ({{ v.provider }})</option>
+            }
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Kunde</label>
+          <select [(ngModel)]="newVorschlag.kunde_email" id="select-kunde">
+            <option value="">— Kunde wählen —</option>
+            @for (c of clients; track c.user_id) {
+              <option [value]="c.email">{{ c.name }} ({{ c.email }})</option>
+            }
+          </select>
+        </div>
+        <div class="form-group full">
+          <label>Nachricht (optional)</label>
+          <textarea [(ngModel)]="newVorschlag.message" rows="2" placeholder="Warum passt diese Versicherung?"></textarea>
+        </div>
+      </div>
+      <div class="create-actions">
+        <button class="btn btn-primary" (click)="createVorschlag()" id="send-vorschlag">Senden</button>
+        <button class="btn btn-ghost" (click)="showCreateForm = false">Abbrechen</button>
+      </div>
+    </div>
+  }
+
+  @if (isLoading && vorschlaege.length === 0) {
+    <p class="info">Vorschläge werden geladen...</p>
+  }
+
+  <!-- ══ Offene Vorschläge (Kunde) ══ -->
+  @if (offeneVorschlaege.length > 0) {
+    <div class="section-label">Neue Vorschläge</div>
+    <div class="vorschlag-list">
+      @for (v of offeneVorschlaege; track v.vorschlag_id) {
+        <div class="vorschlag-card" [class.expanded]="activeId === v.vorschlag_id" id="vorschlag-{{ v.vorschlag_id }}">
+          <div class="vorschlag-summary">
+            <div class="vorschlag-info">
+              <span class="vorschlag-badge">{{ v.versicherung_category }}</span>
+              <h3>{{ v.versicherung_name }}</h3>
+              <p class="provider">{{ v.versicherung_provider }}</p>
+              @if (v.message) {
+                <p class="message">💬 {{ v.message }}</p>
+              }
+              <p class="berater-hint">Vorgeschlagen von {{ v.berater_name }}</p>
+            </div>
+            <div class="vorschlag-right">
+              <span class="price">{{ v.versicherung_price | number:'1.2-2' }} € / Monat</span>
+              <div class="action-buttons">
+                <button class="btn btn-accept" (click)="toggleForm(v.vorschlag_id)">
+                  {{ activeId === v.vorschlag_id ? 'Schließen' : '✓ Annehmen' }}
+                </button>
+                <button class="btn btn-decline" (click)="showDeclineDialog(v.vorschlag_id, v.versicherung_name)">
+                  ✕ Ablehnen
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Formular beim Annehmen -->
+          @if (activeId === v.vorschlag_id) {
+            <div class="accept-form">
+              <h3>Vertragsdaten</h3>
+
+              <!-- Regler: Mich ausfüllen / Für wen anders -->
+              <div class="fill-toggle">
+                <span class="toggle-label" [class.active]="fillForSelf">Für mich</span>
+                <label class="toggle-switch">
+                  <input type="checkbox" [checked]="!fillForSelf" (change)="fillForSelf = !fillForSelf" />
+                  <span class="toggle-slider"></span>
+                </label>
+                <span class="toggle-label" [class.active]="!fillForSelf">Für jemand anderen</span>
+              </div>
+
+              @if (fillForSelf) {
+                <p class="self-hint">Die Vertragsdaten werden aus Ihrem Konto übernommen, da Sie bereits angemeldet sind.</p>
+              }
+
+              <!-- Formularfelder nur bei "Für wen anders ausfüllen" -->
+              @if (!fillForSelf) {
+                <div class="form-grid">
+                  <div class="form-group">
+                    <label>Vorname</label>
+                    <input [(ngModel)]="formData.vorname" placeholder="Max" />
+                  </div>
+                  <div class="form-group">
+                    <label>Nachname</label>
+                    <input [(ngModel)]="formData.nachname" placeholder="Mustermann" />
+                  </div>
+                  <div class="form-group">
+                    <label>Geburtsdatum</label>
+                    <input type="date" [(ngModel)]="formData.geburtsdatum" />
+                  </div>
+                  <div class="form-group">
+                    <label>Straße &amp; Hausnummer</label>
+                    <input [(ngModel)]="formData.strasse" placeholder="Musterstraße 1" />
+                  </div>
+                  <div class="form-group">
+                    <label>PLZ</label>
+                    <input [(ngModel)]="formData.plz" placeholder="12345" />
+                  </div>
+                  <div class="form-group">
+                    <label>Ort</label>
+                    <input [(ngModel)]="formData.ort" placeholder="Musterstadt" />
+                  </div>
+                  <div class="form-group">
+                    <label>Telefon</label>
+                    <input [(ngModel)]="formData.telefon" placeholder="+49 123 456789" />
+                  </div>
+                  <div class="form-group">
+                    <label>E-Mail</label>
+                    <input type="email" [(ngModel)]="formData.email" placeholder="max@beispiel.de" />
+                  </div>
+                  <div class="form-group">
+                    <label>Versicherungsbeginn</label>
+                    <input type="date" [(ngModel)]="formData.versicherungsbeginn" />
+                  </div>
+                </div>
+              }
+
+              <!-- Unterschrift -->
+              <div class="signature-section">
+                <h3>Digitale Unterschrift</h3>
+                <p class="signature-hint">Zeichnen Sie Ihre Unterschrift im Feld unten:</p>
+                <canvas
+                  #signatureCanvas
+                  class="signature-canvas"
+                  (mousedown)="startDrawing($event)"
+                  (mousemove)="draw($event)"
+                  (mouseup)="stopDrawing()"
+                  (mouseleave)="stopDrawing()"
+                  (touchstart)="startDrawing($event)"
+                  (touchmove)="draw($event)"
+                  (touchend)="stopDrawing()">
+                </canvas>
+                <button class="btn btn-ghost" (click)="clearSignature()">Unterschrift löschen</button>
+              </div>
+
+              @if (formMessage) {
+                <p class="form-message" [class.success]="formMessage.includes('erfolgreich')">{{ formMessage }}</p>
+              }
+
+              <div class="form-actions">
+                <button class="btn btn-submit" (click)="submitForm()" [disabled]="isSubmitting" id="submit-vorschlag">
+                  {{ isSubmitting ? 'Wird abgeschickt…' : 'Vertrag abschließen & absenden' }}
+                </button>
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  }
+
+  <!-- ══ Bereits angenommen ══ -->
+  @if (angenommeneVorschlaege.length > 0) {
+    <div class="section-label">Abgeschlossene Versicherungen</div>
+    <div class="vorschlag-list">
+      @for (v of angenommeneVorschlaege; track v.vorschlag_id) {
+        <div class="vorschlag-card done">
+          <div class="vorschlag-summary">
+            <div class="vorschlag-info">
+              <span class="vorschlag-badge done-badge">✓ Abgeschlossen</span>
+              <h3>{{ v.versicherung_name }}</h3>
+              <p class="provider">{{ v.versicherung_provider }}</p>
+            </div>
+            <span class="price">{{ v.versicherung_price | number:'1.2-2' }} € / Monat</span>
+          </div>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- ══ Abgelehnte Vorschläge ══ -->
+  @if (abgelehnteVorschlaege.length > 0 && !canManage) {
+    <div class="section-label">Abgelehnte Vorschläge</div>
+    <div class="vorschlag-list">
+      @for (v of abgelehnteVorschlaege; track v.vorschlag_id) {
+        <div class="vorschlag-card declined">
+          <div class="vorschlag-summary">
+            <div class="vorschlag-info">
+              <span class="vorschlag-badge declined-badge">✕ Abgelehnt</span>
+              <h3>{{ v.versicherung_name }}</h3>
+              <p class="provider">{{ v.versicherung_provider }}</p>
+            </div>
+            <span class="price muted">{{ v.versicherung_price | number:'1.2-2' }} € / Monat</span>
+          </div>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- ══ Berater: gesendete Vorschläge ══ -->
+  @if (canManage && vorschlaege.length > 0) {
+    <div class="section-label">Gesendete Vorschläge</div>
+    <div class="vorschlag-list">
+      @for (v of vorschlaege; track v.vorschlag_id) {
+        <div class="vorschlag-card berater-view">
+          <div class="vorschlag-summary">
+            <div class="vorschlag-info">
+              <span class="vorschlag-badge" [class.done-badge]="v.status === 'angenommen'" [class.declined-badge]="v.status === 'abgelehnt'">
+                {{ v.status === 'angenommen' ? '✓ Angenommen' : v.status === 'abgelehnt' ? '✕ Abgelehnt' : 'Offen' }}
+              </span>
+              <h3>{{ v.versicherung_name }}</h3>
+              <p class="provider">{{ v.versicherung_provider }} · an {{ v.kunde_email }}</p>
+            </div>
+            <span class="price">{{ v.versicherung_price | number:'1.2-2' }} € / Monat</span>
+          </div>
+        </div>
+      }
+    </div>
+  }
+
+  @if (!isLoading && vorschlaege.length === 0) {
+    <div class="empty-state">
+      <span class="empty-icon">💡</span>
+      <p>Keine Vorschläge vorhanden.</p>
+    </div>
+  }
+
+  <!-- ══ Custom Ablehnen-Dialog ══ -->
+  @if (declineTargetId) {
+    <div class="dialog-overlay" (click)="cancelDecline()">
+      <div class="dialog-box" (click)="$event.stopPropagation()">
+        <div class="dialog-icon">⚠️</div>
+        <h3>Vorschlag ablehnen?</h3>
+        <p>Sind Sie sicher, dass Sie den Vorschlag <strong>„{{ declineTargetName }}"</strong> ablehnen möchten?</p>
+        <div class="dialog-actions">
+          <button class="btn btn-ghost" (click)="cancelDecline()">Abbrechen</button>
+          <button class="btn btn-decline" (click)="confirmDecline()">Ja, ablehnen</button>
+        </div>
+      </div>
+    </div>
+  }
+</div>

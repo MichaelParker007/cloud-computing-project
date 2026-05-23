@@ -148,4 +148,29 @@ export class ApiService {
       headers: this.getHeaders(),
     });
   }
+
+  // Vorschläge
+  getVorschlaege(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.baseUrl}/vorschlaege`, {
+      headers: this.getHeaders(),
+    });
+  }
+
+  createVorschlag(data: { versicherung_id: string; kunde_email: string; message?: string }): Observable<any> {
+    return this.http.post(`${this.baseUrl}/vorschlaege`, data, {
+      headers: this.getHeaders(),
+    });
+  }
+
+  annehmenVorschlag(vorschlagId: string, body: { form_data: any; signature_data?: string | null }): Observable<any> {
+    return this.http.post(`${this.baseUrl}/vorschlaege/${vorschlagId}/annehmen`, body, {
+      headers: this.getHeaders(),
+    });
+  }
+
+  ablehnenVorschlag(vorschlagId: string): Observable<any> {
+    return this.http.post(`${this.baseUrl}/vorschlaege/${vorschlagId}/ablehnen`, {}, {
+      headers: this.getHeaders(),
+    });
+  }
 }

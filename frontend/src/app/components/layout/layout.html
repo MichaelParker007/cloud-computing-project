@@ -28,9 +28,14 @@
         @if (sidebarOpen) { <span>Pakete</span> }
       </a>
 
-      <a routerLink="/dateien" routerLinkActive="active" class="nav-item" id="nav-dateien">
-        <span class="nav-icon">📁</span>
-        @if (sidebarOpen) { <span>Dateien</span> }
+      <a routerLink="/archiv" routerLinkActive="active" class="nav-item" id="nav-archiv">
+        <span class="nav-icon">🗄️</span>
+        @if (sidebarOpen) { <span>Archiv</span> }
+      </a>
+
+      <a routerLink="/vorschlaege" routerLinkActive="active" class="nav-item" id="nav-vorschlaege">
+        <span class="nav-icon">💡</span>
+        @if (sidebarOpen) { <span>Vorschläge</span> }
       </a>
 
       @if (isAdmin || isBerater) {

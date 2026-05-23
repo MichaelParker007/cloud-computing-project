@@ -1,38 +1,98 @@
 <div class="versicherungen-page">
   <h1>📋 Meine Versicherungen</h1>
 
-  @if (isLoading && versicherungen.length === 0) {
+  @if (isLoading && meineVersicherungen.length === 0) {
     <p class="info">Versicherungen werden geladen...</p>
   }
 
-  @if (errorMessage) {
-    <p class="error">{{ errorMessage }}</p>
-  }
-
-  @if (!isLoading && versicherungen.length === 0) {
-    <p class="info">Keine Versicherungen gefunden.</p>
+  @if (!isLoading && meineVersicherungen.length === 0) {
+    <div class="empty-state">
+      <span class="empty-icon">📋</span>
+      <p>Sie haben noch keine Versicherungen abgeschlossen.</p>
+      <p class="empty-hint">Schauen Sie unter <a routerLink="/vorschlaege">Vorschläge</a>, ob passende Angebote für Sie vorliegen.</p>
+    </div>
   }
 
   <div class="versicherung-grid">
-    @for (versicherung of versicherungen; track versicherung.doc_id) {
+    @for (v of meineVersicherungen; track v.vorschlag_id) {
       <div class="versicherung-card">
         <div class="card-header">
-          <h3>{{ versicherung.name }}</h3>
-          <span>{{ versicherung.category }}</span>
+          <h3>{{ v.versicherung_name }}</h3>
+          <span class="accepted-badge">✓ Abgeschlossen</span>
         </div>
 
-        <p class="provider">{{ versicherung.provider }}</p>
+        <p class="provider">{{ v.versicherung_provider }}</p>
 
         <p class="description">
-          {{ versicherung.description }}
+          {{ v.versicherung_description }}
         </p>
 
-        <p class="price">{{ versicherung.monthly_price }} € / Monat</p>
+        <p class="price">{{ v.versicherung_price }} € / Monat</p>
 
-        <button class="details-btn" (click)="router.navigate(['/versicherungen', versicherung.doc_id])">
-          Details anzeigen
-        </button>
+        @if (v.vertragsende) {
+          <p class="valid-until">Gültig bis: {{ v.vertragsende | date:'dd.MM.yyyy' }}</p>
+        }
+
+        <div class="card-actions">
+          <button class="details-btn" (click)="openDetail(v)">
+            Details anzeigen
+          </button>
+          <button class="archiv-btn" (click)="router.navigate(['/archiv', v.vorschlag_id])" title="Archiv dieser Versicherung öffnen">
+            🗄️ Archiv
+          </button>
+        </div>
       </div>
     }
   </div>
+
+  <!-- ══ Detail-Modal ══ -->
+  @if (selectedDetail) {
+    <div class="detail-overlay" (click)="closeDetail()">
+      <div class="detail-modal" (click)="$event.stopPropagation()">
+        <div class="detail-header">
+          <h2>{{ selectedDetail.versicherung_name }}</h2>
+          <button class="close-btn" (click)="closeDetail()">✕</button>
+        </div>
+
+        <div class="detail-grid">
+          <div class="detail-row">
+            <span class="detail-label">Versicherungsart</span>
+            <span class="detail-value">{{ selectedDetail.versicherung_category || '—' }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Versicherungsanbieter</span>
+            <span class="detail-value">{{ selectedDetail.versicherung_provider || '—' }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Vertragslaufzeit</span>
+            <span class="detail-value">{{ selectedDetail.vertragslaufzeit || '—' }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Gültig bis</span>
+            <span class="detail-value">{{ selectedDetail.vertragsende ? (selectedDetail.vertragsende | date:'dd.MM.yyyy') : '—' }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Automatische Verlängerung</span>
+            <span class="detail-value">{{ selectedDetail.auto_verlaengerung || '—' }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Mindestlaufzeit</span>
+            <span class="detail-value">{{ selectedDetail.mindestlaufzeit || '—' }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Kündigungsfrist</span>
+            <span class="detail-value">{{ selectedDetail.kuendigungsfrist || '—' }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Kosten pro Monat</span>
+            <span class="detail-value">{{ selectedDetail.versicherung_price | number:'1.2-2' }} €</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Abrechnungsart</span>
+            <span class="detail-value">{{ selectedDetail.abrechnungsart || '—' }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
 </div>

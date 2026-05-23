@@ -807,6 +807,215 @@ def create_package(
     return {"message": "Paket erstellt.", "package_id": package_id}
 
 
+# ── Vorschläge (Proposals) ──────────────────────────────────────────────
+
+class VorschlagCreate(BaseModel):
+    versicherung_id: str
+    kunde_email: str
+    message: Optional[str] = ""
+
+
+class VorschlagAnnehmen(BaseModel):
+    form_data: dict
+    signature_data: Optional[str] = None
+
+
+def _seed_dummy_vorschlaege(current_user: User):
+    now = datetime.now(timezone.utc).isoformat()
+    dummies = [
+        {
+            "versicherung_name": "KFZ-Versicherung von Allianz",
+            "versicherung_provider": "Allianz",
+            "versicherung_category": "KFZ",
+            "versicherung_price": 45.90,
+            "versicherung_description": "Umfassender Schutz für Ihr Fahrzeug – Haftpflicht, Teilkasko und Vollkasko in einem Paket.",
+            "berater_id": "system",
+            "berater_name": "Ihr Berater",
+            "kunde_id": current_user.user_id,
+            "kunde_email": current_user.email,
+            "message": "Diese KFZ-Versicherung bietet ein hervorragendes Preis-Leistungs-Verhältnis für Ihren Fuhrpark.",
+            "status": "offen",
+            "created_at": now,
+            "vertragslaufzeit": "12 Monate",
+            "auto_verlaengerung": "Jährlich um 12 Monate",
+            "mindestlaufzeit": "12 Monate",
+            "kuendigungsfrist": "3 Monate zum Vertragsende",
+            "abrechnungsart": "monatlich",
+        },
+        {
+            "versicherung_name": "Hausratversicherung von AXA",
+            "versicherung_provider": "AXA",
+            "versicherung_category": "Hausrat",
+            "versicherung_price": 12.50,
+            "versicherung_description": "Schützt Ihr Hab und Gut gegen Feuer, Einbruch, Leitungswasser und Sturm.",
+            "berater_id": "system",
+            "berater_name": "Ihr Berater",
+            "kunde_id": current_user.user_id,
+            "kunde_email": current_user.email,
+            "message": "Ihre aktuelle Wohnsituation spricht für diese Hausratversicherung – sehr empfehlenswert.",
+            "status": "offen",
+            "created_at": now,
+            "vertragslaufzeit": "24 Monate",
+            "auto_verlaengerung": "Jährlich um 12 Monate",
+            "mindestlaufzeit": "24 Monate",
+            "kuendigungsfrist": "1 Monat zum Vertragsende",
+            "abrechnungsart": "jährlich",
+        },
+        {
+            "versicherung_name": "Haftpflichtversicherung von HUK-Coburg",
+            "versicherung_provider": "HUK-Coburg",
+            "versicherung_category": "Haftpflicht",
+            "versicherung_price": 7.80,
+            "versicherung_description": "Privathaftpflicht mit bis zu 50 Mio. € Deckungssumme – der Klassiker für jeden Haushalt.",
+            "berater_id": "system",
+            "berater_name": "Ihr Berater",
+            "kunde_id": current_user.user_id,
+            "kunde_email": current_user.email,
+            "message": "Eine Haftpflichtversicherung ist ein Muss – dieses Angebot ist kaum zu schlagen.",
+            "status": "offen",
+            "created_at": now,
+            "vertragslaufzeit": "12 Monate",
+            "auto_verlaengerung": "Jährlich um 12 Monate",
+            "mindestlaufzeit": "12 Monate",
+            "kuendigungsfrist": "3 Monate zum Vertragsende",
+            "abrechnungsart": "monatlich",
+        },
+    ]
+    for d in dummies:
+        db.collection("vorschlaege").document(str(uuid.uuid4())).set(d)
+
+
+@app.get("/api/vorschlaege")
+def get_vorschlaege(current_user: User = Depends(get_current_user)):
+    query = db.collection("vorschlaege")
+    if current_user.role == "kunde":
+        query = query.where("kunde_id", "==", current_user.user_id)
+    elif current_user.role == "berater":
+        query = query.where("berater_id", "==", current_user.user_id)
+
+    docs = list(query.stream())
+
+    if not docs and current_user.role == "kunde":
+        _seed_dummy_vorschlaege(current_user)
+        docs = list(query.stream())
+
+    result = []
+    for doc in docs:
+        data = doc.to_dict()
+        result.append({
+            "vorschlag_id": doc.id,
+            "versicherung_id": data.get("versicherung_id", ""),
+            "versicherung_name": data.get("versicherung_name", ""),
+            "versicherung_provider": data.get("versicherung_provider", ""),
+            "versicherung_category": data.get("versicherung_category", ""),
+            "versicherung_price": float(data.get("versicherung_price", 0)),
+            "versicherung_description": data.get("versicherung_description", ""),
+            "berater_id": data.get("berater_id", ""),
+            "berater_name": data.get("berater_name", ""),
+            "kunde_id": data.get("kunde_id", ""),
+            "kunde_email": data.get("kunde_email", ""),
+            "message": data.get("message", ""),
+            "status": data.get("status", "offen"),
+            "created_at": data.get("created_at", ""),
+            "submitted_at": data.get("submitted_at", ""),
+            "vertragsende": data.get("vertragsende", ""),
+            "vertragslaufzeit": data.get("vertragslaufzeit", "12 Monate"),
+            "auto_verlaengerung": data.get("auto_verlaengerung", "Jährlich um 12 Monate"),
+            "mindestlaufzeit": data.get("mindestlaufzeit", "12 Monate"),
+            "kuendigungsfrist": data.get("kuendigungsfrist", "3 Monate zum Vertragsende"),
+            "abrechnungsart": data.get("abrechnungsart", "monatlich"),
+        })
+    return result
+
+
+@app.post("/api/vorschlaege")
+def create_vorschlag(body: VorschlagCreate, current_user: User = Depends(require_role("admin", "berater"))):
+    versicherung_doc = db.collection("versicherungen").document(body.versicherung_id).get()
+    if not versicherung_doc.exists:
+        raise HTTPException(status_code=404, detail="Versicherung nicht gefunden.")
+    v_data = versicherung_doc.to_dict()
+
+    with Session(engine) as sql_db:
+        kunde = sql_db.query(SQLUser).filter(SQLUser.email == body.kunde_email).first()
+        if not kunde:
+            raise HTTPException(status_code=404, detail="Kunde nicht gefunden.")
+        kunde_id = str(kunde.id)
+
+    now = datetime.now(timezone.utc).isoformat()
+    vorschlag_id = str(uuid.uuid4())
+    data = {
+        "versicherung_id": body.versicherung_id,
+        "versicherung_name": f"{v_data.get('typ', '')} von {v_data.get('anbieter', '')}",
+        "versicherung_provider": v_data.get("anbieter", ""),
+        "versicherung_category": v_data.get("typ", ""),
+        "versicherung_price": float(v_data.get("preis", 0)),
+        "versicherung_description": v_data.get("beschreibung", ""),
+        "berater_id": current_user.user_id,
+        "berater_name": current_user.name,
+        "kunde_id": kunde_id,
+        "kunde_email": body.kunde_email,
+        "message": body.message or "",
+        "status": "offen",
+        "created_at": now,
+    }
+    db.collection("vorschlaege").document(vorschlag_id).set(data)
+    return {"message": "Vorschlag gesendet.", "vorschlag_id": vorschlag_id}
+
+
+@app.post("/api/vorschlaege/{vorschlag_id}/annehmen")
+def annehmen_vorschlag(
+    vorschlag_id: str,
+    body: VorschlagAnnehmen,
+    current_user: User = Depends(get_current_user),
+):
+    doc_ref = db.collection("vorschlaege").document(vorschlag_id)
+    doc = doc_ref.get()
+    if not doc.exists:
+        raise HTTPException(status_code=404, detail="Vorschlag nicht gefunden.")
+    data = doc.to_dict()
+    if data.get("kunde_id") != current_user.user_id:
+        raise HTTPException(status_code=403, detail="Zugriff verweigert.")
+    if data.get("status") != "offen":
+        raise HTTPException(status_code=400, detail="Vorschlag wurde bereits bearbeitet.")
+
+    now = datetime.now(timezone.utc)
+    laufzeit = data.get("vertragslaufzeit", "12 Monate")
+    monate = 12
+    try:
+        monate = int(laufzeit.split()[0])
+    except (ValueError, IndexError):
+        pass
+    vertragsende = (now + timedelta(days=monate * 30)).strftime("%Y-%m-%d")
+    doc_ref.update({
+        "status": "angenommen",
+        "form_data": body.form_data,
+        "signature_data": body.signature_data,
+        "submitted_at": now.isoformat(),
+        "vertragsende": vertragsende,
+    })
+    return {"message": "Versicherung abgeschlossen.", "status": "angenommen"}
+
+
+@app.post("/api/vorschlaege/{vorschlag_id}/ablehnen")
+def ablehnen_vorschlag(
+    vorschlag_id: str,
+    current_user: User = Depends(get_current_user),
+):
+    doc_ref = db.collection("vorschlaege").document(vorschlag_id)
+    doc = doc_ref.get()
+    if not doc.exists:
+        raise HTTPException(status_code=404, detail="Vorschlag nicht gefunden.")
+    data = doc.to_dict()
+    if data.get("kunde_id") != current_user.user_id:
+        raise HTTPException(status_code=403, detail="Zugriff verweigert.")
+    if data.get("status") != "offen":
+        raise HTTPException(status_code=400, detail="Vorschlag wurde bereits bearbeitet.")
+
+    now = datetime.now(timezone.utc).isoformat()
+    doc_ref.update({"status": "abgelehnt", "updated_at": now})
+    return {"message": "Vorschlag abgelehnt.", "status": "abgelehnt"}
+
+
 # ── Folders ──────────────────────────────────────────────────────────────
 
 @app.get("/api/folders")
