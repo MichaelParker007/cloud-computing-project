@@ -79,27 +79,12 @@ export class Archiv implements OnInit, OnDestroy {
     this.isLoading = true;
     this.api.getVorschlaege().subscribe({
       next: (vorschlaege) => {
-        const accepted = vorschlaege
+        this.folders = vorschlaege
           .filter((v: any) => v.status === 'angenommen')
-          .map((v: any) => this.proposalToFolder(v));
-
-        this.api.getVersicherungen().subscribe({
-          next: (catalog) => {
-            const catalogFolders = catalog.map((v: any) => this.catalogToFolder(v));
-            const merged = [...accepted];
-            for (const cf of catalogFolders) {
-              if (!merged.some((f) => f.docId === cf.docId)) merged.push(cf);
-            }
-            this.folders = merged.sort((a, b) => a.archiveId.localeCompare(b.archiveId));
-            this.isLoading = false;
-            this.applyRoute();
-          },
-          error: () => {
-            this.folders = accepted.sort((a, b) => a.archiveId.localeCompare(b.archiveId));
-            this.isLoading = false;
-            this.applyRoute();
-          },
-        });
+          .map((v: any) => this.proposalToFolder(v))
+          .sort((a, b) => a.archiveId.localeCompare(b.archiveId));
+        this.isLoading = false;
+        this.applyRoute();
       },
       error: () => {
         this.isLoading = false;
@@ -133,16 +118,6 @@ export class Archiv implements OnInit, OnDestroy {
       ? letters.charAt(0).toUpperCase() + letters.slice(1, 3).toLowerCase()
       : 'Ver';
     return `${prefix}-${num}`;
-  }
-
-  private catalogToFolder(v: any): ArchiveFolder {
-    return {
-      docId: v.doc_id,
-      archiveId: this.makeArchiveId(v.provider, String(v.id ?? 0).padStart(6, '0')),
-      name: v.name,
-      provider: v.provider,
-      category: v.category,
-    };
   }
 
   private proposalToFolder(v: any): ArchiveFolder {
