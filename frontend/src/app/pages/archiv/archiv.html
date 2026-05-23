@@ -65,18 +65,42 @@
     </div>
 
     @if (files.length > 0) {
-      <div class="section-label">Dokumente</div>
-      <div class="items-grid">
+      <!-- Toolbar -->
+      <div class="list-toolbar">
+        <div class="toolbar-left">
+          <label class="select-all-label">
+            <input type="checkbox" [checked]="allSelected" (change)="toggleSelectAll()" />
+            <span>Alle auswählen</span>
+          </label>
+          <span class="file-count">{{ files.length }} Dokumente</span>
+        </div>
+        @if (selectedFiles.length > 0) {
+          <button class="btn btn-primary btn-sm" (click)="downloadSelected()">
+            ⬇ {{ selectedFiles.length }} herunterladen
+          </button>
+        }
+      </div>
+
+      <!-- Dateiliste -->
+      <div class="file-list">
         @for (file of files; track file.file_id) {
-          <div class="item-card file-card">
-            <span class="item-icon">📄</span>
+          <div class="file-row" [class.file-row-selected]="file.selected">
+            <label class="file-checkbox">
+              <input type="checkbox" [(ngModel)]="file.selected" />
+            </label>
+            <span class="file-icon">📄</span>
             <div class="file-info">
-              <span class="item-name">{{ file.name }}</span>
+              <span class="file-name">{{ file.name }}</span>
               <span class="file-meta">{{ formatSize(file.size) }} · {{ file.content_type }}</span>
             </div>
-            @if (canManage) {
-              <button class="delete-btn" (click)="deleteFile(file.file_id)">🗑</button>
-            }
+            <span class="file-status" [ngClass]="statusClass(file.status)">{{ file.status }}</span>
+            <div class="file-actions">
+              <button class="action-btn edit-btn" title="Formular bearbeiten" (click)="openEditor(file)">🖊</button>
+              <button class="action-btn download-btn" title="Herunterladen" (click)="downloadFile(file)">⬇</button>
+              @if (canManage) {
+                <button class="action-btn delete-btn" title="Löschen" (click)="deleteFile(file.file_id)">🗑</button>
+              }
+            </div>
           </div>
         }
       </div>
@@ -86,5 +110,36 @@
         <p>Noch keine Dokumente in diesem Ordner.</p>
       </div>
     }
+  }
+
+  <!-- ══ Formular-Editor Modal ══ -->
+  @if (editingFile) {
+    <div class="editor-overlay" (click)="closeEditor()">
+      <div class="editor-modal" (click)="$event.stopPropagation()">
+        <div class="editor-header">
+          <h2>🖊 {{ editingFile.name }}</h2>
+          <button class="close-btn" (click)="closeEditor()">✕</button>
+        </div>
+
+        <div class="editor-body">
+          @for (field of formFields(); track field) {
+            <div class="form-group">
+              <label class="form-label">{{ field }}</label>
+              <input
+                type="text"
+                class="form-input"
+                [(ngModel)]="editFormData[field]"
+                [placeholder]="field + ' eingeben...'"
+              />
+            </div>
+          }
+        </div>
+
+        <div class="editor-footer">
+          <button class="btn btn-ghost" (click)="closeEditor()">Abbrechen</button>
+          <button class="btn btn-primary" (click)="saveForm()">Speichern</button>
+        </div>
+      </div>
+    </div>
   }
 </div>

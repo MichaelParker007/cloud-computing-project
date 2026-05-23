@@ -7,12 +7,95 @@ import { ApiService } from '../../services/api.service';
 import { AuthService } from '../../services/auth.service';
 
 interface ArchiveFolder {
-  docId: string;       // Firestore doc_id der Versicherung
-  archiveId: string;   // generierte Versicherungs-ID, z.B. "All-123456"
-  name: string;        // voller Name der Versicherung
-  provider: string;    // Anbieter
-  category: string;    // Typ/Kategorie
+  docId: string;
+  archiveId: string;
+  name: string;
+  provider: string;
+  category: string;
 }
+
+interface ArchiveFile {
+  file_id: string;
+  name: string;
+  status: string;
+  size: number;
+  content_type: string;
+  selected: boolean;
+  formData?: Record<string, string>;
+}
+
+const DUMMY_FILES: Omit<ArchiveFile, 'selected'>[] = [
+  {
+    file_id: 'dummy-1',
+    name: 'Versicherungsantrag.pdf',
+    status: 'Genehmigt',
+    size: 245000,
+    content_type: 'application/pdf',
+    formData: {
+      'Versicherungsnehmer': 'Max Mustermann',
+      'Vertragsnummer': 'VN-2024-00184',
+      'Versicherungsbeginn': '01.01.2025',
+      'Versicherungsende': '31.12.2025',
+      'Monatlicher Beitrag': '45,90 EUR',
+    },
+  },
+  {
+    file_id: 'dummy-2',
+    name: 'Schadenmeldung_2025.pdf',
+    status: 'Abgeschickt',
+    size: 189000,
+    content_type: 'application/pdf',
+    formData: {
+      'Schadennummer': '',
+      'Schadendatum': '15.03.2025',
+      'Schadenort': 'München, Hauptstraße 12',
+      'Schadenbeschreibung': 'Wasserschaden im Keller durch Rohrbruch',
+      'Geschätzte Schadenhöhe': '3.200,00 EUR',
+    },
+  },
+  {
+    file_id: 'dummy-3',
+    name: 'Beitragsrechnung_Q1_2025.pdf',
+    status: 'In Bearbeitung',
+    size: 98000,
+    content_type: 'application/pdf',
+    formData: {
+      'Rechnungsnummer': 'RE-2025-0041',
+      'Rechnungsdatum': '01.01.2025',
+      'Fälligkeitsdatum': '15.01.2025',
+      'Betrag': '137,70 EUR',
+      'Zahlungsstatus': 'Ausstehend',
+    },
+  },
+  {
+    file_id: 'dummy-4',
+    name: 'Kuendigungsschreiben.pdf',
+    status: 'Nicht angesehen',
+    size: 64000,
+    content_type: 'application/pdf',
+    formData: {
+      'Vertragsnummer': 'VN-2024-00184',
+      'Kündigungsdatum': '',
+      'Kündigungsgrund': '',
+      'Wirksamkeit zum': '',
+      'Unterschrift': '',
+    },
+  },
+  {
+    file_id: 'dummy-5',
+    name: 'Vertragsnachtrag_Deckung.pdf',
+    status: 'Abgeschickt',
+    size: 152000,
+    content_type: 'application/pdf',
+    formData: {
+      'Nachtragsnummer': 'NT-2025-003',
+      'Änderungsart': 'Deckungserweiterung',
+      'Neue Deckungssumme': '100.000,00 EUR',
+      'Gültig ab': '01.04.2025',
+      'Zusätzlicher Beitrag': '8,50 EUR / Monat',
+    },
+  },
+];
 
 @Component({
   selector: 'app-archiv',
@@ -24,10 +107,12 @@ export class Archiv implements OnInit, OnDestroy {
   folders: ArchiveFolder[] = [];
   searchTerm = '';
 
-  // Ordner-Ansicht (eine geöffnete Versicherung)
   selected: ArchiveFolder | null = null;
   currentFolderId: string | null = null;
-  files: any[] = [];
+  files: ArchiveFile[] = [];
+
+  editingFile: ArchiveFile | null = null;
+  editFormData: Record<string, string> = {};
 
   isLoading = true;
   userRole = '';
@@ -74,6 +159,19 @@ export class Archiv implements OnInit, OnDestroy {
     );
   }
 
+  get selectedFiles(): ArchiveFile[] {
+    return this.files.filter((f) => f.selected);
+  }
+
+  get allSelected(): boolean {
+    return this.files.length > 0 && this.files.every((f) => f.selected);
+  }
+
+  toggleSelectAll(): void {
+    const newState = !this.allSelected;
+    this.files.forEach((f) => (f.selected = newState));
+  }
+
   // ── Laden ────────────────────────────────────────────────────────────
   loadAll(): void {
     this.isLoading = true;
@@ -92,7 +190,6 @@ export class Archiv implements OnInit, OnDestroy {
     });
   }
 
-  /** Reagiert auf den Routen-Parameter: Liste oder geöffneter Ordner. */
   private applyRoute(): void {
     if (!this.routeDocId) {
       this.selected = null;
@@ -131,8 +228,7 @@ export class Archiv implements OnInit, OnDestroy {
     };
   }
 
-  // ── Navigation zwischen Liste und Ordner ──────────────────────────────
-  /** Klick auf einen Ordner in der Liste → URL aktualisieren. */
+  // ── Navigation ──────────────────────────────────────────────────────
   selectFolder(folder: ArchiveFolder): void {
     this.router.navigate(['/archiv', folder.docId]);
   }
@@ -141,7 +237,6 @@ export class Archiv implements OnInit, OnDestroy {
     this.router.navigate(['/archiv']);
   }
 
-  /** Öffnet den Ordner und lädt dessen Dateien (ohne Navigation). */
   private openFolder(folder: ArchiveFolder): void {
     this.selected = folder;
     this.loadFolderFiles(folder.docId);
@@ -153,22 +248,97 @@ export class Archiv implements OnInit, OnDestroy {
         if (folders.length > 0) {
           this.currentFolderId = folders[0].folder_id;
           this.api.getFiles(this.currentFolderId!).subscribe({
-            next: (f) => (this.files = f),
-            error: () => (this.files = []),
+            next: (f) => {
+              this.files = this.mergeDummyFiles(f);
+            },
+            error: () => {
+              this.files = this.makeDummyFiles();
+            },
           });
         } else {
           this.currentFolderId = null;
-          this.files = [];
+          this.files = this.makeDummyFiles();
         }
       },
       error: () => {
         this.currentFolderId = null;
-        this.files = [];
+        this.files = this.makeDummyFiles();
       },
     });
   }
 
-  // ── Datei-Verwaltung ──────────────────────────────────────────────────
+  private makeDummyFiles(): ArchiveFile[] {
+    return DUMMY_FILES.map((d) => ({ ...d, selected: false, formData: { ...d.formData } }));
+  }
+
+  private mergeDummyFiles(realFiles: any[]): ArchiveFile[] {
+    const real: ArchiveFile[] = realFiles.map((f) => ({
+      file_id: f.file_id,
+      name: f.name,
+      status: 'Abgeschickt',
+      size: f.size,
+      content_type: f.content_type,
+      selected: false,
+    }));
+    const dummies = this.makeDummyFiles();
+    return [...dummies, ...real];
+  }
+
+  // ── Status ──────────────────────────────────────────────────────────
+  statusClass(status: string): string {
+    switch (status) {
+      case 'Genehmigt': return 'status-genehmigt';
+      case 'Abgeschickt': return 'status-abgeschickt';
+      case 'In Bearbeitung': return 'status-bearbeitung';
+      case 'Nicht angesehen': return 'status-nicht-angesehen';
+      default: return '';
+    }
+  }
+
+  // ── Formular-Editor ─────────────────────────────────────────────────
+  openEditor(file: ArchiveFile): void {
+    this.editingFile = file;
+    this.editFormData = file.formData ? { ...file.formData } : {};
+  }
+
+  closeEditor(): void {
+    this.editingFile = null;
+    this.editFormData = {};
+  }
+
+  saveForm(): void {
+    if (this.editingFile) {
+      this.editingFile.formData = { ...this.editFormData };
+      if (this.editingFile.status === 'Nicht angesehen') {
+        this.editingFile.status = 'In Bearbeitung';
+      }
+    }
+    this.closeEditor();
+  }
+
+  formFields(): string[] {
+    return Object.keys(this.editFormData);
+  }
+
+  // ── Download ────────────────────────────────────────────────────────
+  downloadFile(file: ArchiveFile): void {
+    const content = file.formData
+      ? Object.entries(file.formData).map(([k, v]) => `${k}: ${v || '—'}`).join('\n')
+      : `Datei: ${file.name}`;
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = file.name.replace('.pdf', '.txt');
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  downloadSelected(): void {
+    this.selectedFiles.forEach((f) => this.downloadFile(f));
+  }
+
+  // ── Datei-Upload ────────────────────────────────────────────────────
   onFileSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
     if (!input.files?.length || !this.selected) return;
@@ -177,7 +347,6 @@ export class Archiv implements OnInit, OnDestroy {
     if (this.currentFolderId) {
       this.uploadInto(this.currentFolderId, file, input);
     } else {
-      // Ordner für diese Versicherung existiert noch nicht → anlegen
       this.api
         .createFolder({ name: this.selected.archiveId, versicherung_id: this.selected.docId })
         .subscribe({
@@ -201,6 +370,10 @@ export class Archiv implements OnInit, OnDestroy {
   }
 
   deleteFile(fileId: string): void {
+    if (fileId.startsWith('dummy-')) {
+      this.files = this.files.filter((f) => f.file_id !== fileId);
+      return;
+    }
     if (confirm('Datei wirklich löschen?')) {
       this.api.deleteFile(fileId).subscribe({
         next: () => this.selected && this.loadFolderFiles(this.selected.docId),
