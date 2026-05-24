@@ -4,64 +4,61 @@
     <p class="role-badge">{{ roleName }}</p>
   </div>
 
-  <div class="stats-grid">
-    <div class="stat-card">
-      <span class="stat-icon">📋</span>
-      <div class="stat-info">
-        <span class="stat-value">{{ stats.versicherungen }}</span>
-        <span class="stat-label">Versicherungen</span>
-      </div>
-    </div>
-    <div class="stat-card">
-      <span class="stat-icon">📁</span>
-      <div class="stat-info">
-        <span class="stat-value">{{ stats.folders }}</span>
-        <span class="stat-label">Ordner</span>
-      </div>
-    </div>
-    <div class="stat-card">
-      <span class="stat-icon">📄</span>
-      <div class="stat-info">
-        <span class="stat-value">{{ stats.files }}</span>
-        <span class="stat-label">Dateien</span>
-      </div>
-    </div>
-    @if (user?.role === 'admin') {
-    <div class="stat-card">
-      <span class="stat-icon">👥</span>
-      <div class="stat-info">
-        <span class="stat-value">{{ stats.users }}</span>
-        <span class="stat-label">Benutzer</span>
-      </div>
+  <div class="activity-section">
+    <h2>Neuigkeiten</h2>
+    @if (activitiesLoading && activities.length === 0) {
+    <div class="activity-empty">Aktivitäten werden geladen...</div>
+    } @else if (activities.length === 0) {
+    <div class="activity-empty">Noch keine Aktivitäten vorhanden.</div>
+    } @else {
+    <div class="activity-list">
+      @for (item of activities; track item.date.getTime() + item.type + item.detail) {
+      <a [routerLink]="item.routerLink || null" class="activity-item" [class.clickable]="item.routerLink">
+        <span class="activity-icon">{{ item.icon }}</span>
+        <div class="activity-content">
+          <span class="activity-title">{{ item.title }}</span>
+          <span class="activity-detail">{{ item.detail }}</span>
+        </div>
+        <span class="activity-time">{{ formatDate(item.date) }}</span>
+      </a>
+      }
     </div>
     }
   </div>
 
-  <div class="quick-actions">
-    <h2>Schnellzugriff</h2>
-    <div class="actions-grid">
-      <a routerLink="/versicherungen" class="action-card" id="action-versicherungen">
-        <span class="action-icon">📋</span>
-        <span class="action-title">Versicherungen</span>
-        <span class="action-desc">Alle Tarife einsehen</span>
-      </a>
-      <a routerLink="/pakete" class="action-card" id="action-pakete">
-        <span class="action-icon">📦</span>
-        <span class="action-title">Pakete</span>
-        <span class="action-desc">Leistungen & Pakete</span>
-      </a>
-      <a routerLink="/archiv" class="action-card" id="action-archiv">
-        <span class="action-icon">🗄️</span>
-        <span class="action-title">Archiv</span>
-        <span class="action-desc">Dokumente je Versicherung</span>
-      </a>
-      @if (user?.role === 'admin') {
-      <a routerLink="/benutzer" class="action-card" id="action-benutzer">
-        <span class="action-icon">⚙️</span>
-        <span class="action-title">Benutzer</span>
-        <span class="action-desc">Rollen verwalten</span>
-      </a>
-      }
+  <div class="costs-section">
+    <h2>Monatliche Kosten</h2>
+    @if (costsLoading && costItems.length === 0) {
+    <div class="activity-empty">Kosten werden geladen...</div>
+    } @else if (costItems.length === 0) {
+    <div class="activity-empty">Keine aktiven Versicherungen vorhanden.</div>
+    } @else {
+    <div class="costs-table-wrap">
+      <table class="costs-table">
+        <thead>
+          <tr>
+            <th>Versicherung</th>
+            <th>Anbieter</th>
+            <th class="col-price">Monatlich</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (item of costItems; track item.name + item.provider) {
+          <tr>
+            <td>{{ item.name }}</td>
+            <td>{{ item.provider }}</td>
+            <td class="col-price">{{ item.monthly.toFixed(2) }} &euro;</td>
+          </tr>
+          }
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="2">Gesamt</td>
+            <td class="col-price">{{ costTotal.toFixed(2) }} &euro;</td>
+          </tr>
+        </tfoot>
+      </table>
     </div>
+    }
   </div>
 </div>
