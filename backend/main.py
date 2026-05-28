@@ -3,10 +3,16 @@ import os
 import uuid
 import hashlib
 import secrets
+import io
+import base64
+import random
+import smtplib
+from email.mime.text import MIMEText
 from datetime import datetime, timedelta, timezone
 from typing import Optional, List
 
 from dotenv import load_dotenv
+from pathlib import Path
 from fastapi import FastAPI, Header, HTTPException, Depends, Response, UploadFile, File, Form, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr
@@ -15,7 +21,19 @@ from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
 from google.cloud import firestore, storage
 
+BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / ".env")
+
 import jwt
+try:
+    import pyotp
+    import qrcode
+    TOTP_AVAILABLE = True
+except ImportError:
+    pyotp = None
+    qrcode = None
+    TOTP_AVAILABLE = False
+import sqlalchemy
 from sqlalchemy.orm import Session
 from database import engine
 from models import Base, User as SQLUser
@@ -33,6 +51,42 @@ JWT_EXPIRATION_HOURS = 24
 
 app = FastAPI(title="Versicherungen HUB API")
 Base.metadata.create_all(bind=engine)
+
+
+def _migrate_users_table():
+    new_columns = {
+        "nachname": "VARCHAR(255)",
+        "alter_jahre": "INT",
+        "adresse": "VARCHAR(512)",
+        "telefon": "VARCHAR(50)",
+        "familienstand": "VARCHAR(100)",
+        "beruf": "VARCHAR(255)",
+        "bankdaten_iban": "VARCHAR(34)",
+        "bankdaten_bic": "VARCHAR(11)",
+        "bankdaten_inhaber": "VARCHAR(255)",
+        "two_factor_enabled": "BOOLEAN DEFAULT FALSE",
+        "two_factor_method": "VARCHAR(20)",
+        "totp_secret": "VARCHAR(255)",
+        "notify_email_enabled": "BOOLEAN DEFAULT TRUE",
+        "notify_neue_vorschlaege": "BOOLEAN DEFAULT TRUE",
+        "notify_vertragsablauf": "BOOLEAN DEFAULT TRUE",
+        "reset_code": "VARCHAR(10)",
+        "reset_code_expires": "DATETIME",
+        "pending_2fa_user_id": "INT",
+    }
+    try:
+        with engine.connect() as conn:
+            result = conn.execute(sqlalchemy.text("SHOW COLUMNS FROM users"))
+            existing = {row[0] for row in result}
+            for col_name, col_type in new_columns.items():
+                if col_name not in existing:
+                    conn.execute(sqlalchemy.text(f"ALTER TABLE users ADD COLUMN {col_name} {col_type}"))
+            conn.commit()
+    except Exception as e:
+        print(f"[MIGRATION] Spalten-Migration übersprungen: {e}")
+
+
+_migrate_users_table()
 
 app.add_middleware(
     CORSMiddleware,
@@ -140,6 +194,94 @@ class PackageResponse(BaseModel):
 
 class AssignClientRequest(BaseModel):
     client_email: str
+
+
+class ProfileUpdate(BaseModel):
+    name: Optional[str] = None
+    nachname: Optional[str] = None
+    alter: Optional[int] = None
+    adresse: Optional[str] = None
+    telefon: Optional[str] = None
+    familienstand: Optional[str] = None
+    beruf: Optional[str] = None
+    bankdaten_iban: Optional[str] = None
+    bankdaten_bic: Optional[str] = None
+    bankdaten_inhaber: Optional[str] = None
+
+
+class PasswordChangeRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+
+class PasswordResetRequest(BaseModel):
+    email: str
+
+
+class PasswordResetVerify(BaseModel):
+    email: str
+    code: str
+
+
+class PasswordResetConfirm(BaseModel):
+    email: str
+    code: str
+    new_password: str
+
+
+class TwoFactorSetupRequest(BaseModel):
+    method: str  # "email" or "totp"
+
+
+class TwoFactorVerifyRequest(BaseModel):
+    code: str
+
+
+class TwoFactorLoginVerify(BaseModel):
+    user_id: str
+    code: str
+    method: str
+
+
+class NotificationSettingsUpdate(BaseModel):
+    notify_email_enabled: Optional[bool] = None
+    notify_neue_vorschlaege: Optional[bool] = None
+    notify_vertragsablauf: Optional[bool] = None
+
+
+# ── Email Sending ──────────────────────────────────────────────────────
+
+SMTP_HOST = os.getenv("SMTP_HOST", "")
+SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
+SMTP_USER = os.getenv("SMTP_USER", "")
+SMTP_PASS = os.getenv("SMTP_PASS", "")
+SMTP_FROM = os.getenv("SMTP_FROM", "noreply@versicherungs-hub.de")
+
+
+def send_email(to: str, subject: str, body: str) -> bool:
+    if not SMTP_HOST or not SMTP_USER or not SMTP_PASS:
+        print("[EMAIL-STUB] SMTP nicht vollständig konfiguriert.")
+        print(f"[EMAIL-STUB] An: {to} | Betreff: {subject}")
+        return False
+
+    try:
+        msg = MIMEText(body, "plain", "utf-8")
+        msg["Subject"] = subject
+        msg["From"] = SMTP_FROM
+        msg["To"] = to
+
+        import ssl
+        context = ssl.create_default_context()
+
+        with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, context=context) as server:
+            server.login(SMTP_USER, SMTP_PASS)
+            server.send_message(msg)
+
+        return True
+
+    except Exception as e:
+        print(f"[EMAIL-ERROR] {type(e).__name__}: {e}")
+        return False
 
 
 # ── Password Hashing ────────────────────────────────────────────────────
@@ -420,6 +562,25 @@ def login_with_email(request: EmailLoginRequest):
         if not verify_password(request.password, sql_user.password_hash):
             raise HTTPException(status_code=401, detail="E-Mail oder Passwort falsch.")
 
+        if sql_user.two_factor_enabled:
+            if sql_user.two_factor_method == "email":
+                code = f"{random.randint(0, 9999):04d}"
+                sql_user.reset_code = code
+                sql_user.reset_code_expires = datetime.now(timezone.utc) + timedelta(minutes=10)
+                sql_db.commit()
+                send_email(
+                    to=sql_user.email,
+                    subject="Ihr Login-Bestätigungscode",
+                    body=f"Ihr Code für die Anmeldung: {code}\n\nDieser Code ist 10 Minuten gültig.",
+                )
+
+            return {
+                "requires_2fa": True,
+                "user_id": str(sql_user.id),
+                "two_factor_method": sql_user.two_factor_method,
+                "message": "Zwei-Faktor-Authentifizierung erforderlich.",
+            }
+
         sql_user.last_login = datetime.utcnow()
         sql_db.commit()
         sql_db.refresh(sql_user)
@@ -456,6 +617,349 @@ def api_get_me(current_user: User = Depends(get_current_user)):
 @app.get("/me")
 def get_me(current_user: User = Depends(get_current_user)):
     return current_user.model_dump()
+
+
+# ── Profile (Mein Bereich) ─────────────────────────────────────────────
+
+@app.get("/api/profile")
+def get_profile(current_user: User = Depends(get_current_user)):
+    with Session(engine) as sql_db:
+        sql_user = sql_db.query(SQLUser).filter(SQLUser.id == int(current_user.user_id)).first()
+        if not sql_user:
+            raise HTTPException(status_code=404, detail="Benutzer nicht gefunden.")
+        return {
+            "user_id": str(sql_user.id),
+            "email": sql_user.email,
+            "name": sql_user.name or "",
+            "nachname": sql_user.nachname or "",
+            "alter": sql_user.alter_jahre,
+            "adresse": sql_user.adresse or "",
+            "telefon": sql_user.telefon or "",
+            "familienstand": sql_user.familienstand or "",
+            "beruf": sql_user.beruf or "",
+            "bankdaten_iban": sql_user.bankdaten_iban or "",
+            "bankdaten_bic": sql_user.bankdaten_bic or "",
+            "bankdaten_inhaber": sql_user.bankdaten_inhaber or "",
+            "auth_provider": sql_user.auth_provider or "email",
+            "picture": sql_user.picture,
+            "role": sql_user.role or "kunde",
+            "two_factor_enabled": sql_user.two_factor_enabled or False,
+            "two_factor_method": sql_user.two_factor_method or "",
+            "notify_email_enabled": sql_user.notify_email_enabled if sql_user.notify_email_enabled is not None else True,
+            "notify_neue_vorschlaege": sql_user.notify_neue_vorschlaege if sql_user.notify_neue_vorschlaege is not None else True,
+            "notify_vertragsablauf": sql_user.notify_vertragsablauf if sql_user.notify_vertragsablauf is not None else True,
+        }
+
+
+@app.put("/api/profile")
+def update_profile(update: ProfileUpdate, current_user: User = Depends(get_current_user)):
+    with Session(engine) as sql_db:
+        sql_user = sql_db.query(SQLUser).filter(SQLUser.id == int(current_user.user_id)).first()
+        if not sql_user:
+            raise HTTPException(status_code=404, detail="Benutzer nicht gefunden.")
+
+        if update.name is not None:
+            sql_user.name = update.name
+        if update.nachname is not None:
+            sql_user.nachname = update.nachname
+        if update.alter is not None:
+            sql_user.alter_jahre = update.alter
+        if update.adresse is not None:
+            sql_user.adresse = update.adresse
+        if update.telefon is not None:
+            sql_user.telefon = update.telefon
+        if update.familienstand is not None:
+            sql_user.familienstand = update.familienstand
+        if update.beruf is not None:
+            sql_user.beruf = update.beruf
+        if update.bankdaten_iban is not None:
+            sql_user.bankdaten_iban = update.bankdaten_iban
+        if update.bankdaten_bic is not None:
+            sql_user.bankdaten_bic = update.bankdaten_bic
+        if update.bankdaten_inhaber is not None:
+            sql_user.bankdaten_inhaber = update.bankdaten_inhaber
+
+        sql_db.commit()
+        return {"message": "Profil aktualisiert."}
+
+
+@app.put("/api/profile/password")
+def change_password(body: PasswordChangeRequest, current_user: User = Depends(get_current_user)):
+    with Session(engine) as sql_db:
+        sql_user = sql_db.query(SQLUser).filter(SQLUser.id == int(current_user.user_id)).first()
+        if not sql_user:
+            raise HTTPException(status_code=404, detail="Benutzer nicht gefunden.")
+
+        if not sql_user.password_hash:
+            raise HTTPException(status_code=400, detail="Passwortänderung nicht möglich für Google-Konten.")
+
+        if not verify_password(body.current_password, sql_user.password_hash):
+            raise HTTPException(status_code=401, detail="Aktuelles Passwort ist falsch.")
+
+        if len(body.new_password) < 6:
+            raise HTTPException(status_code=400, detail="Neues Passwort muss mindestens 6 Zeichen lang sein.")
+
+        sql_user.password_hash = hash_password(body.new_password)
+        sql_db.commit()
+        return {"message": "Passwort erfolgreich geändert."}
+
+
+# ── Password Reset ─────────────────────────────────────────────────────
+
+@app.post("/api/auth/password-reset/request")
+def request_password_reset(body: PasswordResetRequest):
+    with Session(engine) as sql_db:
+        sql_user = sql_db.query(SQLUser).filter(SQLUser.email == body.email).first()
+        if not sql_user:
+            return {"message": "Falls ein Konto mit dieser E-Mail existiert, wurde ein Code gesendet."}
+
+        if not sql_user.password_hash:
+            return {"message": "Falls ein Konto mit dieser E-Mail existiert, wurde ein Code gesendet."}
+
+        code = f"{random.randint(0, 9999):04d}"
+        sql_user.reset_code = code
+        sql_user.reset_code_expires = datetime.now(timezone.utc) + timedelta(minutes=15)
+        sql_db.commit()
+
+        send_email(
+            to=body.email,
+            subject="Ihr Passwort-Reset-Code",
+            body=f"Ihr Code zum Zurücksetzen des Passworts lautet: {code}\n\nDieser Code ist 15 Minuten gültig.",
+        )
+
+        return {"message": "Falls ein Konto mit dieser E-Mail existiert, wurde ein Code gesendet."}
+
+
+@app.post("/api/auth/password-reset/verify")
+def verify_reset_code(body: PasswordResetVerify):
+    with Session(engine) as sql_db:
+        sql_user = sql_db.query(SQLUser).filter(SQLUser.email == body.email).first()
+        if not sql_user or not sql_user.reset_code:
+            raise HTTPException(status_code=400, detail="Ungültiger Code.")
+
+        if sql_user.reset_code_expires and sql_user.reset_code_expires.replace(tzinfo=timezone.utc) < datetime.now(timezone.utc):
+            sql_user.reset_code = None
+            sql_user.reset_code_expires = None
+            sql_db.commit()
+            raise HTTPException(status_code=400, detail="Code ist abgelaufen.")
+
+        if sql_user.reset_code != body.code:
+            raise HTTPException(status_code=400, detail="Ungültiger Code.")
+
+        return {"message": "Code verifiziert.", "valid": True}
+
+
+@app.post("/api/auth/password-reset/confirm")
+def confirm_password_reset(body: PasswordResetConfirm):
+    with Session(engine) as sql_db:
+        sql_user = sql_db.query(SQLUser).filter(SQLUser.email == body.email).first()
+        if not sql_user or not sql_user.reset_code:
+            raise HTTPException(status_code=400, detail="Ungültiger Reset-Vorgang.")
+
+        if sql_user.reset_code_expires and sql_user.reset_code_expires.replace(tzinfo=timezone.utc) < datetime.now(timezone.utc):
+            sql_user.reset_code = None
+            sql_user.reset_code_expires = None
+            sql_db.commit()
+            raise HTTPException(status_code=400, detail="Code ist abgelaufen.")
+
+        if sql_user.reset_code != body.code:
+            raise HTTPException(status_code=400, detail="Ungültiger Code.")
+
+        if len(body.new_password) < 6:
+            raise HTTPException(status_code=400, detail="Passwort muss mindestens 6 Zeichen lang sein.")
+
+        sql_user.password_hash = hash_password(body.new_password)
+        sql_user.reset_code = None
+        sql_user.reset_code_expires = None
+        sql_db.commit()
+
+        return {"message": "Passwort erfolgreich zurückgesetzt."}
+
+
+# ── Two-Factor Authentication ──────────────────────────────────────────
+
+@app.post("/api/profile/2fa/setup")
+def setup_two_factor(body: TwoFactorSetupRequest, current_user: User = Depends(get_current_user)):
+    if body.method not in ("email", "totp"):
+        raise HTTPException(status_code=400, detail="Ungültige 2FA-Methode. Erlaubt: email, totp")
+
+    with Session(engine) as sql_db:
+        sql_user = sql_db.query(SQLUser).filter(SQLUser.id == int(current_user.user_id)).first()
+        if not sql_user:
+            raise HTTPException(status_code=404, detail="Benutzer nicht gefunden.")
+
+        if body.method == "totp":
+            if not TOTP_AVAILABLE:
+                raise HTTPException(status_code=501, detail="TOTP-Bibliothek nicht installiert. Bitte pyotp und qrcode installieren.")
+            secret = pyotp.random_base32()
+            sql_user.totp_secret = secret
+            sql_user.two_factor_method = "totp"
+            sql_db.commit()
+
+            totp = pyotp.TOTP(secret)
+            uri = totp.provisioning_uri(name=sql_user.email, issuer_name="Versicherungs-Hub")
+
+            img = qrcode.make(uri)
+            buf = io.BytesIO()
+            img.save(buf, format="PNG")
+            qr_base64 = base64.b64encode(buf.getvalue()).decode()
+
+            return {
+                "method": "totp",
+                "secret": secret,
+                "qr_code": f"data:image/png;base64,{qr_base64}",
+                "message": "Scannen Sie den QR-Code mit Ihrer Authenticator-App.",
+            }
+
+        else:
+            code = f"{random.randint(0, 9999):04d}"
+            sql_user.reset_code = code
+            sql_user.reset_code_expires = datetime.now(timezone.utc) + timedelta(minutes=10)
+            sql_user.two_factor_method = "email"
+            sql_db.commit()
+
+            send_email(
+                to=sql_user.email,
+                subject="Ihr 2FA-Bestätigungscode",
+                body=f"Ihr Code zur Aktivierung der Zwei-Faktor-Authentifizierung: {code}",
+            )
+
+            return {
+                "method": "email",
+                "message": "Ein Bestätigungscode wurde an Ihre E-Mail gesendet.",
+            }
+
+
+@app.post("/api/profile/2fa/verify")
+def verify_two_factor_setup(body: TwoFactorVerifyRequest, current_user: User = Depends(get_current_user)):
+    with Session(engine) as sql_db:
+        sql_user = sql_db.query(SQLUser).filter(SQLUser.id == int(current_user.user_id)).first()
+        if not sql_user:
+            raise HTTPException(status_code=404, detail="Benutzer nicht gefunden.")
+
+        method = sql_user.two_factor_method
+
+        if method == "totp":
+            if not TOTP_AVAILABLE or not sql_user.totp_secret:
+                raise HTTPException(status_code=400, detail="TOTP nicht eingerichtet.")
+            totp = pyotp.TOTP(sql_user.totp_secret)
+            if not totp.verify(body.code, valid_window=1):
+                raise HTTPException(status_code=400, detail="Ungültiger Code.")
+        elif method == "email":
+            if not sql_user.reset_code or sql_user.reset_code != body.code:
+                raise HTTPException(status_code=400, detail="Ungültiger Code.")
+            if sql_user.reset_code_expires and sql_user.reset_code_expires.replace(tzinfo=timezone.utc) < datetime.now(timezone.utc):
+                raise HTTPException(status_code=400, detail="Code abgelaufen.")
+            sql_user.reset_code = None
+            sql_user.reset_code_expires = None
+        else:
+            raise HTTPException(status_code=400, detail="Keine 2FA-Methode konfiguriert.")
+
+        sql_user.two_factor_enabled = True
+        sql_db.commit()
+        return {"message": "Zwei-Faktor-Authentifizierung aktiviert.", "enabled": True}
+
+
+@app.post("/api/profile/2fa/disable")
+def disable_two_factor(current_user: User = Depends(get_current_user)):
+    with Session(engine) as sql_db:
+        sql_user = sql_db.query(SQLUser).filter(SQLUser.id == int(current_user.user_id)).first()
+        if not sql_user:
+            raise HTTPException(status_code=404, detail="Benutzer nicht gefunden.")
+
+        sql_user.two_factor_enabled = False
+        sql_user.two_factor_method = None
+        sql_user.totp_secret = None
+        sql_db.commit()
+        return {"message": "Zwei-Faktor-Authentifizierung deaktiviert.", "enabled": False}
+
+
+@app.post("/api/auth/2fa/send-code")
+def send_2fa_login_code(body: PasswordResetRequest):
+    with Session(engine) as sql_db:
+        sql_user = sql_db.query(SQLUser).filter(SQLUser.email == body.email).first()
+        if not sql_user or not sql_user.two_factor_enabled:
+            return {"message": "Code gesendet."}
+
+        code = f"{random.randint(0, 9999):04d}"
+        sql_user.reset_code = code
+        sql_user.reset_code_expires = datetime.now(timezone.utc) + timedelta(minutes=10)
+        sql_db.commit()
+
+        send_email(
+            to=sql_user.email,
+            subject="Ihr Login-Bestätigungscode",
+            body=f"Ihr Code für die Anmeldung: {code}\n\nDieser Code ist 10 Minuten gültig.",
+        )
+        return {"message": "Code gesendet."}
+
+
+@app.post("/api/auth/2fa/verify")
+def verify_2fa_login(body: TwoFactorLoginVerify):
+    with Session(engine) as sql_db:
+        sql_user = sql_db.query(SQLUser).filter(SQLUser.id == int(body.user_id)).first()
+        if not sql_user:
+            raise HTTPException(status_code=401, detail="Benutzer nicht gefunden.")
+
+        if body.method == "totp":
+            if not TOTP_AVAILABLE or not sql_user.totp_secret:
+                raise HTTPException(status_code=400, detail="TOTP nicht eingerichtet.")
+            totp = pyotp.TOTP(sql_user.totp_secret)
+            if not totp.verify(body.code, valid_window=1):
+                raise HTTPException(status_code=401, detail="Ungültiger Code.")
+        elif body.method == "email":
+            if not sql_user.reset_code or sql_user.reset_code != body.code:
+                raise HTTPException(status_code=401, detail="Ungültiger Code.")
+            if sql_user.reset_code_expires and sql_user.reset_code_expires.replace(tzinfo=timezone.utc) < datetime.now(timezone.utc):
+                raise HTTPException(status_code=401, detail="Code abgelaufen.")
+            sql_user.reset_code = None
+            sql_user.reset_code_expires = None
+        else:
+            raise HTTPException(status_code=400, detail="Ungültige Methode.")
+
+        sql_user.last_login = datetime.utcnow()
+        sql_db.commit()
+
+        token = create_jwt_token({
+            "user_id": str(sql_user.id),
+            "name": sql_user.name or "",
+            "email": sql_user.email,
+            "role": sql_user.role or "kunde",
+            "picture": sql_user.picture,
+            "auth_provider": sql_user.auth_provider or "email",
+        })
+
+        return {
+            "token": token,
+            "user": {
+                "user_id": str(sql_user.id),
+                "name": sql_user.name or "",
+                "email": sql_user.email,
+                "role": sql_user.role or "kunde",
+                "picture": sql_user.picture,
+                "auth_provider": sql_user.auth_provider or "email",
+            },
+        }
+
+
+# ── Notification Settings ──────────────────────────────────────────────
+
+@app.put("/api/profile/notifications")
+def update_notification_settings(body: NotificationSettingsUpdate, current_user: User = Depends(get_current_user)):
+    with Session(engine) as sql_db:
+        sql_user = sql_db.query(SQLUser).filter(SQLUser.id == int(current_user.user_id)).first()
+        if not sql_user:
+            raise HTTPException(status_code=404, detail="Benutzer nicht gefunden.")
+
+        if body.notify_email_enabled is not None:
+            sql_user.notify_email_enabled = body.notify_email_enabled
+        if body.notify_neue_vorschlaege is not None:
+            sql_user.notify_neue_vorschlaege = body.notify_neue_vorschlaege
+        if body.notify_vertragsablauf is not None:
+            sql_user.notify_vertragsablauf = body.notify_vertragsablauf
+
+        sql_db.commit()
+        return {"message": "Benachrichtigungseinstellungen aktualisiert."}
 
 
 # ── User Management (Admin) ─────────────────────────────────────────────

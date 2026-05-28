@@ -11,3 +11,6 @@ python-multipart
 sqlalchemy
 pymysql
 cloud-sql-python-connector[pymysql]
+pyotp
+qrcode[pil]
+python-dotenv
