@@ -11,16 +11,18 @@ import {
   NavigationError,
 } from '@angular/router';
 import { AuthService, UserInfo } from '../../services/auth.service';
+import { MeinBereich } from '../mein-bereich/mein-bereich';
 
 @Component({
   selector: 'app-layout',
-  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive],
+  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive, MeinBereich],
   templateUrl: './layout.html',
   styleUrl: './layout.css',
 })
 export class Layout {
   sidebarOpen = true;
   user: UserInfo | null = null;
+  showMeinBereich = false;
 
   isNavigating = false;
   pageEnter = false;
@@ -72,6 +74,14 @@ export class Layout {
 
   toggleSidebar(): void {
     this.sidebarOpen = !this.sidebarOpen;
+  }
+
+  openMeinBereich(): void {
+    this.showMeinBereich = true;
+  }
+
+  closeMeinBereich(): void {
+    this.showMeinBereich = false;
   }
 
   onLogout(): void {

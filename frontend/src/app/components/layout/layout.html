@@ -60,7 +60,7 @@
 
     <div class="sidebar-footer">
       @if (user) {
-      <div class="user-info">
+      <div class="user-info user-info-clickable" (click)="openMeinBereich()" title="Mein Bereich öffnen">
         @if (user.picture) {
         <img [src]="user.picture" alt="Avatar" class="avatar" />
         } @else {
@@ -76,6 +76,10 @@
       }
     </div>
   </aside>
+
+  @if (showMeinBereich) {
+    <app-mein-bereich (close)="closeMeinBereich()"></app-mein-bereich>
+  }
 
   <!-- Hauptbereich -->
   <div class="main-area">

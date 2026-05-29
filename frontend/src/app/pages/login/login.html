@@ -9,7 +9,11 @@
     @if (errorMessage) {
       <div class="error-banner">{{ errorMessage }}</div>
     }
+    @if (successMessage) {
+      <div class="success-banner">{{ successMessage }}</div>
+    }
 
+    <!-- ═══ Login ═══ -->
     @if (mode === 'login') {
       <div class="form-section">
         <div class="input-group">
@@ -32,6 +36,10 @@
             placeholder="••••••••"
             (keyup.enter)="onEmailLogin()"
           />
+        </div>
+
+        <div class="forgot-password">
+          <a (click)="openPasswordReset()">Passwort vergessen?</a>
         </div>
 
         <button
@@ -68,6 +76,7 @@
       </p>
     }
 
+    <!-- ═══ Register ═══ -->
     @if (mode === 'register') {
       <div class="form-section">
         <div class="input-group">
@@ -128,6 +137,153 @@
       <p class="switch-mode">
         Bereits ein Konto?
         <a (click)="toggleMode()" id="switch-to-login">Jetzt anmelden</a>
+      </p>
+    }
+
+    <!-- ═══ Password Reset: E-Mail eingeben ═══ -->
+    @if (mode === 'reset-request') {
+      <div class="form-section">
+        <p class="reset-info">Geben Sie Ihre E-Mail-Adresse ein. Wir senden Ihnen einen Code zum Zurücksetzen.</p>
+        <div class="input-group">
+          <label for="reset-email">E-Mail</label>
+          <input
+            id="reset-email"
+            type="email"
+            [(ngModel)]="resetEmail"
+            placeholder="name@beispiel.de"
+            (keyup.enter)="requestResetCode()"
+          />
+        </div>
+
+        <button
+          class="primary-btn"
+          (click)="requestResetCode()"
+          [disabled]="isLoading"
+        >
+          @if (isLoading) {
+            <span class="spinner"></span> Senden...
+          } @else {
+            Code senden
+          }
+        </button>
+      </div>
+      <p class="switch-mode">
+        <a (click)="backToLogin()">Zurück zur Anmeldung</a>
+      </p>
+    }
+
+    <!-- ═══ Password Reset: Code eingeben ═══ -->
+    @if (mode === 'reset-code') {
+      <div class="form-section">
+        <p class="reset-info">Geben Sie den 4-stelligen Code ein, den Sie per E-Mail erhalten haben.</p>
+        <div class="input-group">
+          <label for="reset-code-input">Code</label>
+          <input
+            id="reset-code-input"
+            type="text"
+            [(ngModel)]="resetCode"
+            placeholder="0000"
+            maxlength="4"
+            class="code-input"
+            (keyup.enter)="verifyResetCode()"
+          />
+        </div>
+
+        <button
+          class="primary-btn"
+          (click)="verifyResetCode()"
+          [disabled]="isLoading"
+        >
+          @if (isLoading) {
+            <span class="spinner"></span> Prüfen...
+          } @else {
+            Code bestätigen
+          }
+        </button>
+      </div>
+      <p class="switch-mode">
+        <a (click)="backToLogin()">Zurück zur Anmeldung</a>
+      </p>
+    }
+
+    <!-- ═══ Password Reset: Neues Passwort ═══ -->
+    @if (mode === 'reset-newpw') {
+      <div class="form-section">
+        <p class="reset-info">Legen Sie ein neues Passwort fest.</p>
+        <div class="input-group">
+          <label for="new-pw">Neues Passwort</label>
+          <input
+            id="new-pw"
+            type="password"
+            [(ngModel)]="resetNewPassword"
+            placeholder="Mind. 6 Zeichen"
+          />
+        </div>
+        <div class="input-group">
+          <label for="confirm-new-pw">Neues Passwort bestätigen</label>
+          <input
+            id="confirm-new-pw"
+            type="password"
+            [(ngModel)]="resetConfirmPassword"
+            placeholder="Passwort wiederholen"
+            (keyup.enter)="confirmResetPassword()"
+          />
+        </div>
+
+        <button
+          class="primary-btn"
+          (click)="confirmResetPassword()"
+          [disabled]="isLoading"
+        >
+          @if (isLoading) {
+            <span class="spinner"></span> Speichern...
+          } @else {
+            Passwort neu setzen
+          }
+        </button>
+      </div>
+      <p class="switch-mode">
+        <a (click)="backToLogin()">Zurück zur Anmeldung</a>
+      </p>
+    }
+
+    <!-- ═══ 2FA Verification ═══ -->
+    @if (mode === '2fa') {
+      <div class="form-section">
+        <p class="reset-info">
+          @if (twoFAMethod === 'email') {
+            Ein Bestätigungscode wurde an Ihre E-Mail gesendet.
+          } @else {
+            Geben Sie den Code aus Ihrer Authenticator-App ein.
+          }
+        </p>
+        <div class="input-group">
+          <label for="2fa-code">Bestätigungscode</label>
+          <input
+            id="2fa-code"
+            type="text"
+            [(ngModel)]="twoFACode"
+            placeholder="Code eingeben"
+            maxlength="6"
+            class="code-input"
+            (keyup.enter)="verify2FA()"
+          />
+        </div>
+
+        <button
+          class="primary-btn"
+          (click)="verify2FA()"
+          [disabled]="isLoading"
+        >
+          @if (isLoading) {
+            <span class="spinner"></span> Prüfen...
+          } @else {
+            Anmelden
+          }
+        </button>
+      </div>
+      <p class="switch-mode">
+        <a (click)="backToLogin()">Zurück zur Anmeldung</a>
       </p>
     }
   </div>

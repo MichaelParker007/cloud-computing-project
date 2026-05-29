@@ -180,6 +180,46 @@ h1 {
   text-decoration: underline;
 }
 
+.forgot-password {
+  text-align: right;
+  margin-top: -8px;
+}
+
+.forgot-password a {
+  color: #60a5fa;
+  cursor: pointer;
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.forgot-password a:hover {
+  text-decoration: underline;
+}
+
+.success-banner {
+  background: rgba(34, 197, 94, 0.15);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  color: #86efac;
+  padding: 12px 16px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  font-size: 14px;
+}
+
+.reset-info {
+  color: #94a3b8;
+  font-size: 14px;
+  margin: 0 0 16px;
+  line-height: 1.5;
+}
+
+.code-input {
+  text-align: center;
+  font-size: 24px !important;
+  letter-spacing: 8px;
+  font-weight: 700;
+}
+
 .spinner {
   width: 16px;
   height: 16px;

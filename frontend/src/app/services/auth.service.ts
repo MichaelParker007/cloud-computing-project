@@ -109,6 +109,10 @@ export class AuthService {
     }
   }
 
+  completeLogin(token: string, user: UserInfo): void {
+    this.setSession(token, user);
+  }
+
   private setSession(token: string, user: UserInfo): void {
     localStorage.setItem('auth_token', token);
     localStorage.setItem('user', JSON.stringify(user));

@@ -170,6 +170,18 @@
   gap: 12px;
 }
 
+.user-info-clickable {
+  cursor: pointer;
+  padding: 8px;
+  margin: -8px;
+  border-radius: 10px;
+  transition: background 0.15s;
+}
+
+.user-info-clickable:hover {
+  background: rgba(59, 130, 246, 0.1);
+}
+
 .avatar {
   width: 36px;
   height: 36px;

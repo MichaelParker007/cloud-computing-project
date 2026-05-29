@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../../services/auth.service';
 
 @Component({
@@ -11,8 +12,9 @@ import { AuthService } from '../../services/auth.service';
   styleUrl: './login.css',
 })
 export class Login implements OnInit {
-  mode: 'login' | 'register' = 'login';
+  mode: 'login' | 'register' | 'reset-request' | 'reset-code' | 'reset-newpw' | '2fa' = 'login';
   errorMessage = '';
+  successMessage = '';
   isLoading = false;
 
   // Email form
@@ -21,16 +23,29 @@ export class Login implements OnInit {
   name = '';
   confirmPassword = '';
 
+  // Password reset
+  resetEmail = '';
+  resetCode = '';
+  resetNewPassword = '';
+  resetConfirmPassword = '';
+
+  // 2FA
+  twoFAUserId = '';
+  twoFAMethod = '';
+  twoFACode = '';
+
+  private apiUrl = '/api';
+
   constructor(
     private router: Router,
     private authService: AuthService,
+    private http: HttpClient,
   ) {}
 
   async ngOnInit(): Promise<void> {
     try {
       await this.authService.initAuth();
 
-      // Check if returning from Google OAuth
       const handled = await this.authService.handleGoogleCallback();
       if (handled) {
         this.router.navigate(['/dashboard']);
@@ -64,15 +79,52 @@ export class Login implements OnInit {
     this.isLoading = true;
     this.errorMessage = '';
 
-    const result = await this.authService.loginWithEmail(this.email, this.password);
+    try {
+      const response: any = await this.http
+        .post(`${this.apiUrl}/auth/login`, { email: this.email, password: this.password })
+        .toPromise();
 
-    this.isLoading = false;
+      if (response.requires_2fa) {
+        this.twoFAUserId = response.user_id;
+        this.twoFAMethod = response.two_factor_method;
+        this.twoFACode = '';
+        this.mode = '2fa';
+        this.isLoading = false;
+        return;
+      }
 
-    if (result.success) {
+      this.authService.completeLogin(response.token, response.user);
       this.router.navigate(['/dashboard']);
-    } else {
-      this.errorMessage = result.error || 'Anmeldung fehlgeschlagen.';
+    } catch (error: any) {
+      this.errorMessage = error?.error?.detail || 'Anmeldung fehlgeschlagen.';
     }
+    this.isLoading = false;
+  }
+
+  async verify2FA(): Promise<void> {
+    if (!this.twoFACode || this.twoFACode.length < 4) {
+      this.errorMessage = 'Bitte gültigen Code eingeben.';
+      return;
+    }
+
+    this.isLoading = true;
+    this.errorMessage = '';
+
+    try {
+      const response: any = await this.http
+        .post(`${this.apiUrl}/auth/2fa/verify`, {
+          user_id: this.twoFAUserId,
+          code: this.twoFACode,
+          method: this.twoFAMethod,
+        })
+        .toPromise();
+
+      this.authService.completeLogin(response.token, response.user);
+      this.router.navigate(['/dashboard']);
+    } catch (error: any) {
+      this.errorMessage = error?.error?.detail || 'Ungültiger Code.';
+    }
+    this.isLoading = false;
   }
 
   async onRegister(): Promise<void> {
@@ -109,8 +161,101 @@ export class Login implements OnInit {
     }
   }
 
+  openPasswordReset(): void {
+    this.mode = 'reset-request';
+    this.resetEmail = this.email || '';
+    this.errorMessage = '';
+    this.successMessage = '';
+  }
+
+  async requestResetCode(): Promise<void> {
+    if (!this.resetEmail) {
+      this.errorMessage = 'Bitte E-Mail-Adresse eingeben.';
+      return;
+    }
+    this.isLoading = true;
+    this.errorMessage = '';
+
+    try {
+      await this.http
+        .post(`${this.apiUrl}/auth/password-reset/request`, { email: this.resetEmail })
+        .toPromise();
+      this.mode = 'reset-code';
+      this.successMessage = 'Ein Code wurde an Ihre E-Mail gesendet.';
+    } catch (error: any) {
+      this.errorMessage = error?.error?.detail || 'Fehler beim Senden des Codes.';
+    }
+    this.isLoading = false;
+  }
+
+  async verifyResetCode(): Promise<void> {
+    if (!this.resetCode || this.resetCode.length < 4) {
+      this.errorMessage = 'Bitte den 4-stelligen Code eingeben.';
+      return;
+    }
+    this.isLoading = true;
+    this.errorMessage = '';
+    this.successMessage = '';
+
+    try {
+      await this.http
+        .post(`${this.apiUrl}/auth/password-reset/verify`, {
+          email: this.resetEmail,
+          code: this.resetCode,
+        })
+        .toPromise();
+      this.mode = 'reset-newpw';
+    } catch (error: any) {
+      this.errorMessage = error?.error?.detail || 'Ungültiger Code.';
+    }
+    this.isLoading = false;
+  }
+
+  async confirmResetPassword(): Promise<void> {
+    if (!this.resetNewPassword || this.resetNewPassword.length < 6) {
+      this.errorMessage = 'Passwort muss mindestens 6 Zeichen lang sein.';
+      return;
+    }
+    if (this.resetNewPassword !== this.resetConfirmPassword) {
+      this.errorMessage = 'Passwörter stimmen nicht überein.';
+      return;
+    }
+    this.isLoading = true;
+    this.errorMessage = '';
+
+    try {
+      await this.http
+        .post(`${this.apiUrl}/auth/password-reset/confirm`, {
+          email: this.resetEmail,
+          code: this.resetCode,
+          new_password: this.resetNewPassword,
+        })
+        .toPromise();
+      this.successMessage = 'Passwort erfolgreich zurückgesetzt. Sie können sich jetzt anmelden.';
+      this.mode = 'login';
+      this.resetEmail = '';
+      this.resetCode = '';
+      this.resetNewPassword = '';
+      this.resetConfirmPassword = '';
+    } catch (error: any) {
+      this.errorMessage = error?.error?.detail || 'Fehler beim Zurücksetzen.';
+    }
+    this.isLoading = false;
+  }
+
+  backToLogin(): void {
+    this.mode = 'login';
+    this.errorMessage = '';
+    this.successMessage = '';
+    this.resetCode = '';
+    this.resetNewPassword = '';
+    this.resetConfirmPassword = '';
+    this.twoFACode = '';
+  }
+
   toggleMode(): void {
     this.mode = this.mode === 'login' ? 'register' : 'login';
     this.errorMessage = '';
+    this.successMessage = '';
   }
 }
