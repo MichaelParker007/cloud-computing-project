@@ -15,6 +15,8 @@ from dotenv import load_dotenv
 from pathlib import Path
 from fastapi import FastAPI, Header, HTTPException, Depends, Response, UploadFile, File, Form, Query
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import RedirectResponse as StarletteRedirect
 from pydantic import BaseModel, EmailStr
 
 from google.oauth2 import id_token
@@ -51,6 +53,15 @@ JWT_EXPIRATION_HOURS = 24
 
 app = FastAPI(title="Versicherungen HUB API")
 Base.metadata.create_all(bind=engine)
+
+
+class _ProxyHTTPSRedirect(BaseHTTPMiddleware):
+    """Redirects to HTTPS when running behind a proxy that sets X-Forwarded-Proto: http."""
+    async def dispatch(self, request, call_next):
+        if request.headers.get("x-forwarded-proto") == "http":
+            https_url = str(request.url).replace("http://", "https://", 1)
+            return StarletteRedirect(url=https_url, status_code=301)
+        return await call_next(request)
 
 
 def _migrate_users_table():
@@ -93,13 +104,13 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:4200",
         "http://127.0.0.1:4200",
-        "http://34.159.210.74:4200",
         "https://project-64e4ee95-be58-4dea-8c0.ey.r.appspot.com",
     ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(_ProxyHTTPSRedirect)
 
 db = firestore.Client(
     project=FIRESTORE_PROJECT_ID,

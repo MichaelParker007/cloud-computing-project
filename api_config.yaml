@@ -1,0 +1,835 @@
+swagger: "2.0"
+info:
+  title: "Versicherungs-Hub API"
+  description: >
+    API Gateway Konfiguration für den Versicherungs-Hub.
+    Einziger öffentlicher Einstiegspunkt für das FastAPI Backend (App Engine Service "default").
+    Authentifizierung: Google Identity Platform ID Token (Bearer).
+    Autorisierung (Rollen: kunde / berater / admin) wird im FastAPI Backend geprüft.
+  version: "1.0.0"
+
+# Wird nach dem ersten Deploy mit dem echten Gateway-Hostname ersetzt.
+# Aktueller Wert: Platzhalter — nach Deploy anpassen.
+host: "versicherung-hub-gateway-placeholder.ew.gateway.dev"
+basePath: "/"
+schemes:
+  - "https"
+consumes:
+  - "application/json"
+produces:
+  - "application/json"
+
+# ── Authentifizierung ─────────────────────────────────────────────────────
+# Identity Platform (Firebase Auth) ID Token.
+# Issuer und JWKS-URI sind für das GCP-Projekt fest.
+# Die Audience ist die Firebase Project-ID.
+securityDefinitions:
+  google_id_token:
+    authorizationUrl: ""
+    flow: "implicit"
+    type: "oauth2"
+    x-google-issuer: "https://securetoken.google.com/project-64e4ee95-be58-4dea-8c0"
+    x-google-jwks_uri: "https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com"
+    x-google-audiences: "project-64e4ee95-be58-4dea-8c0"
+
+# ── Backend (App Engine default service) ─────────────────────────────────
+x-google-backend:
+  address: "https://project-64e4ee95-be58-4dea-8c0.ey.r.appspot.com"
+  protocol: "h2"
+
+paths:
+
+  # ── Health (öffentlich, kein Token) ──────────────────────────────────
+
+  /health:
+    get:
+      operationId: "health"
+      summary: "Liveness Check"
+      tags: ["health"]
+      responses:
+        "200":
+          description: "Service läuft"
+
+  /api/health:
+    get:
+      operationId: "apiHealth"
+      summary: "API Health Check"
+      tags: ["health"]
+      responses:
+        "200":
+          description: "Backend läuft"
+
+  /api/config:
+    get:
+      operationId: "getConfig"
+      summary: "App-Konfiguration"
+      tags: ["health"]
+      responses:
+        "200":
+          description: "Konfigurationsobjekt"
+
+  # ── Auth: Google OAuth (öffentlich) ──────────────────────────────────
+
+  /api/auth/google:
+    post:
+      operationId: "loginGoogle"
+      summary: "Login mit Google OAuth ID Token"
+      tags: ["auth"]
+      parameters:
+        - in: "body"
+          name: "body"
+          required: true
+          schema:
+            type: "object"
+            required: ["credential"]
+            properties:
+              credential:
+                type: "string"
+                description: "Google OAuth ID Token"
+      responses:
+        "200":
+          description: "JWT Token + User-Objekt"
+        "401":
+          description: "Ungültiger Google Token"
+
+  # ── Auth: E-Mail/Passwort (öffentlich) ───────────────────────────────
+
+  /api/auth/register:
+    post:
+      operationId: "registerEmail"
+      summary: "Registrierung mit E-Mail und Passwort"
+      tags: ["auth"]
+      parameters:
+        - in: "body"
+          name: "body"
+          required: true
+          schema:
+            type: "object"
+            required: ["email", "password", "name"]
+            properties:
+              email:
+                type: "string"
+              password:
+                type: "string"
+              name:
+                type: "string"
+      responses:
+        "200":
+          description: "JWT Token + User-Objekt"
+        "409":
+          description: "E-Mail bereits vergeben"
+
+  /api/auth/login:
+    post:
+      operationId: "loginEmail"
+      summary: "Login mit E-Mail und Passwort"
+      tags: ["auth"]
+      parameters:
+        - in: "body"
+          name: "body"
+          required: true
+          schema:
+            type: "object"
+            required: ["email", "password"]
+            properties:
+              email:
+                type: "string"
+              password:
+                type: "string"
+      responses:
+        "200":
+          description: "JWT Token oder 2FA-Challenge"
+        "401":
+          description: "Falsche Zugangsdaten"
+
+  # ── Auth: Passwort-Reset (öffentlich) ────────────────────────────────
+
+  /api/auth/password-reset/request:
+    post:
+      operationId: "passwordResetRequest"
+      summary: "Passwort-Reset anfordern (Code per E-Mail)"
+      tags: ["auth"]
+      parameters:
+        - in: "body"
+          name: "body"
+          required: true
+          schema:
+            type: "object"
+            required: ["email"]
+            properties:
+              email:
+                type: "string"
+      responses:
+        "200":
+          description: "Code gesendet (auch wenn E-Mail nicht existiert)"
+
+  /api/auth/password-reset/verify:
+    post:
+      operationId: "passwordResetVerify"
+      summary: "Reset-Code prüfen"
+      tags: ["auth"]
+      parameters:
+        - in: "body"
+          name: "body"
+          required: true
+          schema:
+            type: "object"
+            required: ["email", "code"]
+            properties:
+              email:
+                type: "string"
+              code:
+                type: "string"
+      responses:
+        "200":
+          description: "Code gültig"
+        "400":
+          description: "Code ungültig oder abgelaufen"
+
+  /api/auth/password-reset/confirm:
+    post:
+      operationId: "passwordResetConfirm"
+      summary: "Neues Passwort setzen"
+      tags: ["auth"]
+      parameters:
+        - in: "body"
+          name: "body"
+          required: true
+          schema:
+            type: "object"
+            required: ["email", "code", "new_password"]
+            properties:
+              email:
+                type: "string"
+              code:
+                type: "string"
+              new_password:
+                type: "string"
+      responses:
+        "200":
+          description: "Passwort zurückgesetzt"
+        "400":
+          description: "Code ungültig"
+
+  # ── Auth: 2FA Login (öffentlich) ─────────────────────────────────────
+
+  /api/auth/2fa/send-code:
+    post:
+      operationId: "send2faCode"
+      summary: "2FA Login-Code per E-Mail senden"
+      tags: ["auth"]
+      parameters:
+        - in: "body"
+          name: "body"
+          required: true
+          schema:
+            type: "object"
+            required: ["email"]
+            properties:
+              email:
+                type: "string"
+      responses:
+        "200":
+          description: "Code gesendet"
+
+  /api/auth/2fa/verify:
+    post:
+      operationId: "verify2faLogin"
+      summary: "2FA Code bei Login verifizieren → JWT ausstellen"
+      tags: ["auth"]
+      parameters:
+        - in: "body"
+          name: "body"
+          required: true
+          schema:
+            type: "object"
+            required: ["user_id", "code", "method"]
+            properties:
+              user_id:
+                type: "string"
+              code:
+                type: "string"
+              method:
+                type: "string"
+                enum: ["email", "totp"]
+      responses:
+        "200":
+          description: "JWT Token + User-Objekt"
+        "401":
+          description: "Ungültiger Code"
+
+  # ── Profil (JWT erforderlich) ─────────────────────────────────────────
+
+  /api/me:
+    get:
+      operationId: "getMe"
+      summary: "Aktuell eingeloggter User"
+      tags: ["profile"]
+      security:
+        - google_id_token: []
+      responses:
+        "200":
+          description: "User-Objekt"
+        "401":
+          description: "Nicht authentifiziert"
+
+  /api/profile:
+    get:
+      operationId: "getProfile"
+      summary: "Vollständiges Profil laden"
+      tags: ["profile"]
+      security:
+        - google_id_token: []
+      responses:
+        "200":
+          description: "Profil-Objekt"
+        "401":
+          description: "Nicht authentifiziert"
+    put:
+      operationId: "updateProfile"
+      summary: "Profil aktualisieren"
+      tags: ["profile"]
+      security:
+        - google_id_token: []
+      parameters:
+        - in: "body"
+          name: "body"
+          required: true
+          schema:
+            type: "object"
+      responses:
+        "200":
+          description: "Profil aktualisiert"
+
+  /api/profile/password:
+    put:
+      operationId: "changePassword"
+      summary: "Passwort ändern"
+      tags: ["profile"]
+      security:
+        - google_id_token: []
+      parameters:
+        - in: "body"
+          name: "body"
+          required: true
+          schema:
+            type: "object"
+            required: ["current_password", "new_password"]
+            properties:
+              current_password:
+                type: "string"
+              new_password:
+                type: "string"
+      responses:
+        "200":
+          description: "Passwort geändert"
+        "401":
+          description: "Aktuelles Passwort falsch"
+
+  /api/profile/notifications:
+    put:
+      operationId: "updateNotifications"
+      summary: "Benachrichtigungseinstellungen aktualisieren"
+      tags: ["profile"]
+      security:
+        - google_id_token: []
+      parameters:
+        - in: "body"
+          name: "body"
+          required: true
+          schema:
+            type: "object"
+      responses:
+        "200":
+          description: "Einstellungen aktualisiert"
+
+  /api/profile/2fa/setup:
+    post:
+      operationId: "setup2fa"
+      summary: "2FA einrichten (email oder totp)"
+      tags: ["profile"]
+      security:
+        - google_id_token: []
+      parameters:
+        - in: "body"
+          name: "body"
+          required: true
+          schema:
+            type: "object"
+            required: ["method"]
+            properties:
+              method:
+                type: "string"
+                enum: ["email", "totp"]
+      responses:
+        "200":
+          description: "Setup-Daten (QR-Code bei totp)"
+
+  /api/profile/2fa/verify:
+    post:
+      operationId: "verify2faSetup"
+      summary: "2FA-Einrichtung bestätigen"
+      tags: ["profile"]
+      security:
+        - google_id_token: []
+      parameters:
+        - in: "body"
+          name: "body"
+          required: true
+          schema:
+            type: "object"
+            required: ["code"]
+            properties:
+              code:
+                type: "string"
+      responses:
+        "200":
+          description: "2FA aktiviert"
+
+  /api/profile/2fa/disable:
+    post:
+      operationId: "disable2fa"
+      summary: "2FA deaktivieren"
+      tags: ["profile"]
+      security:
+        - google_id_token: []
+      responses:
+        "200":
+          description: "2FA deaktiviert"
+
+  # ── Admin: User-Verwaltung (JWT + Rolle admin) ────────────────────────
+
+  /api/users:
+    get:
+      operationId: "listUsers"
+      summary: "Alle User auflisten (nur admin)"
+      tags: ["admin"]
+      security:
+        - google_id_token: []
+      responses:
+        "200":
+          description: "Liste aller User"
+        "403":
+          description: "Zugriff verweigert (nicht admin)"
+
+  /api/users/{user_id}:
+    get:
+      operationId: "getUser"
+      summary: "User by ID laden (nur admin)"
+      tags: ["admin"]
+      security:
+        - google_id_token: []
+      parameters:
+        - in: "path"
+          name: "user_id"
+          required: true
+          type: "string"
+      responses:
+        "200":
+          description: "User-Objekt"
+        "404":
+          description: "User nicht gefunden"
+    put:
+      operationId: "updateUser"
+      summary: "User aktualisieren (nur admin)"
+      tags: ["admin"]
+      security:
+        - google_id_token: []
+      parameters:
+        - in: "path"
+          name: "user_id"
+          required: true
+          type: "string"
+        - in: "body"
+          name: "body"
+          required: true
+          schema:
+            type: "object"
+      responses:
+        "200":
+          description: "User aktualisiert"
+    delete:
+      operationId: "deleteUser"
+      summary: "User löschen (nur admin)"
+      tags: ["admin"]
+      security:
+        - google_id_token: []
+      parameters:
+        - in: "path"
+          name: "user_id"
+          required: true
+          type: "string"
+      responses:
+        "200":
+          description: "User gelöscht"
+
+  # ── Berater: Client-Verwaltung (JWT + Rolle berater/admin) ────────────
+
+  /api/berater/clients:
+    get:
+      operationId: "getBeraterClients"
+      summary: "Zugewiesene Kunden des Beraters"
+      tags: ["berater"]
+      security:
+        - google_id_token: []
+      responses:
+        "200":
+          description: "Client-Liste"
+        "403":
+          description: "Zugriff verweigert"
+    post:
+      operationId: "assignClient"
+      summary: "Kunden dem Berater zuweisen"
+      tags: ["berater"]
+      security:
+        - google_id_token: []
+      parameters:
+        - in: "body"
+          name: "body"
+          required: true
+          schema:
+            type: "object"
+            required: ["client_email"]
+            properties:
+              client_email:
+                type: "string"
+      responses:
+        "200":
+          description: "Kunde zugewiesen"
+
+  # ── Versicherungen (JWT erforderlich) ─────────────────────────────────
+
+  /api/versicherungen:
+    get:
+      operationId: "listVersicherungen"
+      summary: "Alle Versicherungen auflisten"
+      tags: ["versicherungen"]
+      security:
+        - google_id_token: []
+      responses:
+        "200":
+          description: "Liste der Versicherungen"
+
+  /api/versicherungen/{doc_id}:
+    get:
+      operationId: "getVersicherung"
+      summary: "Einzelne Versicherung laden"
+      tags: ["versicherungen"]
+      security:
+        - google_id_token: []
+      parameters:
+        - in: "path"
+          name: "doc_id"
+          required: true
+          type: "string"
+      responses:
+        "200":
+          description: "Versicherungsobjekt"
+        "404":
+          description: "Nicht gefunden"
+
+  /api/versicherungen/{doc_id}/formulare:
+    get:
+      operationId: "listFormSubmissions"
+      summary: "Formular-Einsendungen einer Versicherung"
+      tags: ["versicherungen"]
+      security:
+        - google_id_token: []
+      parameters:
+        - in: "path"
+          name: "doc_id"
+          required: true
+          type: "string"
+      responses:
+        "200":
+          description: "Formular-Liste"
+
+  /api/versicherungen/{doc_id}/formulare/save:
+    post:
+      operationId: "saveFormSubmission"
+      summary: "Formular speichern (Entwurf)"
+      tags: ["versicherungen"]
+      security:
+        - google_id_token: []
+      parameters:
+        - in: "path"
+          name: "doc_id"
+          required: true
+          type: "string"
+        - in: "body"
+          name: "body"
+          required: true
+          schema:
+            type: "object"
+      responses:
+        "200":
+          description: "Formular gespeichert"
+
+  /api/versicherungen/{doc_id}/formulare/{form_id}:
+    get:
+      operationId: "getFormSubmission"
+      summary: "Formular-Detail laden"
+      tags: ["versicherungen"]
+      security:
+        - google_id_token: []
+      parameters:
+        - in: "path"
+          name: "doc_id"
+          required: true
+          type: "string"
+        - in: "path"
+          name: "form_id"
+          required: true
+          type: "string"
+      responses:
+        "200":
+          description: "Formular-Objekt"
+
+  /api/versicherungen/{doc_id}/formulare/{form_id}/submit:
+    post:
+      operationId: "submitFormSubmission"
+      summary: "Formular abschicken"
+      tags: ["versicherungen"]
+      security:
+        - google_id_token: []
+      parameters:
+        - in: "path"
+          name: "doc_id"
+          required: true
+          type: "string"
+        - in: "path"
+          name: "form_id"
+          required: true
+          type: "string"
+      responses:
+        "200":
+          description: "Formular abgeschickt"
+
+  # ── Packages (JWT erforderlich) ───────────────────────────────────────
+
+  /api/packages:
+    get:
+      operationId: "listPackages"
+      summary: "Verfügbare Pakete auflisten"
+      tags: ["packages"]
+      security:
+        - google_id_token: []
+      responses:
+        "200":
+          description: "Paket-Liste"
+    post:
+      operationId: "createPackage"
+      summary: "Neues Paket erstellen (berater/admin)"
+      tags: ["packages"]
+      security:
+        - google_id_token: []
+      consumes:
+        - "multipart/form-data"
+      parameters:
+        - in: "formData"
+          name: "name"
+          required: true
+          type: "string"
+        - in: "formData"
+          name: "description"
+          type: "string"
+        - in: "formData"
+          name: "leistungen"
+          type: "string"
+        - in: "formData"
+          name: "price"
+          type: "number"
+        - in: "formData"
+          name: "tier"
+          type: "string"
+      responses:
+        "200":
+          description: "Paket erstellt"
+
+  # ── Vorschläge (JWT erforderlich) ─────────────────────────────────────
+
+  /api/vorschlaege:
+    get:
+      operationId: "listVorschlaege"
+      summary: "Versicherungsvorschläge laden (rollenabhängig gefiltert)"
+      tags: ["vorschlaege"]
+      security:
+        - google_id_token: []
+      responses:
+        "200":
+          description: "Vorschlags-Liste"
+    post:
+      operationId: "createVorschlag"
+      summary: "Vorschlag an Kunden senden (berater/admin)"
+      tags: ["vorschlaege"]
+      security:
+        - google_id_token: []
+      parameters:
+        - in: "body"
+          name: "body"
+          required: true
+          schema:
+            type: "object"
+            required: ["versicherung_id", "kunde_email"]
+            properties:
+              versicherung_id:
+                type: "string"
+              kunde_email:
+                type: "string"
+              message:
+                type: "string"
+      responses:
+        "200":
+          description: "Vorschlag gesendet"
+
+  /api/vorschlaege/{vorschlag_id}/annehmen:
+    post:
+      operationId: "annehmenVorschlag"
+      summary: "Versicherungsvorschlag annehmen (Kunde)"
+      tags: ["vorschlaege"]
+      security:
+        - google_id_token: []
+      parameters:
+        - in: "path"
+          name: "vorschlag_id"
+          required: true
+          type: "string"
+        - in: "body"
+          name: "body"
+          required: true
+          schema:
+            type: "object"
+      responses:
+        "200":
+          description: "Versicherung abgeschlossen"
+
+  /api/vorschlaege/{vorschlag_id}/ablehnen:
+    post:
+      operationId: "ablehnenVorschlag"
+      summary: "Versicherungsvorschlag ablehnen (Kunde)"
+      tags: ["vorschlaege"]
+      security:
+        - google_id_token: []
+      parameters:
+        - in: "path"
+          name: "vorschlag_id"
+          required: true
+          type: "string"
+      responses:
+        "200":
+          description: "Vorschlag abgelehnt"
+
+  # ── Folders (JWT erforderlich) ────────────────────────────────────────
+
+  /api/folders:
+    get:
+      operationId: "listFolders"
+      summary: "Ordnerstruktur laden"
+      tags: ["dokumente"]
+      security:
+        - google_id_token: []
+      parameters:
+        - in: "query"
+          name: "parent_id"
+          type: "string"
+        - in: "query"
+          name: "versicherung_id"
+          type: "string"
+      responses:
+        "200":
+          description: "Ordner-Liste"
+    post:
+      operationId: "createFolder"
+      summary: "Ordner erstellen (berater/admin)"
+      tags: ["dokumente"]
+      security:
+        - google_id_token: []
+      parameters:
+        - in: "body"
+          name: "body"
+          required: true
+          schema:
+            type: "object"
+            required: ["name"]
+            properties:
+              name:
+                type: "string"
+              parent_id:
+                type: "string"
+              versicherung_id:
+                type: "string"
+      responses:
+        "200":
+          description: "Ordner erstellt"
+
+  /api/folders/{folder_id}:
+    delete:
+      operationId: "deleteFolder"
+      summary: "Ordner löschen (berater/admin)"
+      tags: ["dokumente"]
+      security:
+        - google_id_token: []
+      parameters:
+        - in: "path"
+          name: "folder_id"
+          required: true
+          type: "string"
+      responses:
+        "200":
+          description: "Ordner gelöscht"
+
+  # ── Files (JWT erforderlich) ──────────────────────────────────────────
+
+  /api/files:
+    get:
+      operationId: "listFiles"
+      summary: "Dateien auflisten"
+      tags: ["dokumente"]
+      security:
+        - google_id_token: []
+      parameters:
+        - in: "query"
+          name: "folder_id"
+          type: "string"
+      responses:
+        "200":
+          description: "Datei-Liste"
+
+  /api/files/upload:
+    post:
+      operationId: "uploadFile"
+      summary: "Datei hochladen"
+      tags: ["dokumente"]
+      security:
+        - google_id_token: []
+      consumes:
+        - "multipart/form-data"
+      parameters:
+        - in: "formData"
+          name: "file"
+          required: true
+          type: "string"
+          format: "binary"
+        - in: "formData"
+          name: "folder_id"
+          required: true
+          type: "string"
+      responses:
+        "200":
+          description: "Datei hochgeladen"
+
+  /api/files/{file_id}:
+    delete:
+      operationId: "deleteFile"
+      summary: "Datei löschen (berater/admin)"
+      tags: ["dokumente"]
+      security:
+        - google_id_token: []
+      parameters:
+        - in: "path"
+          name: "file_id"
+          required: true
+          type: "string"
+      responses:
+        "200":
+          description: "Datei gelöscht"

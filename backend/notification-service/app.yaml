@@ -1,0 +1,13 @@
+runtime: python311
+service: notification
+
+entrypoint: gunicorn -w 1 -k uvicorn.workers.UvicornWorker main:app
+
+handlers:
+- url: /.*
+  script: auto
+  secure: always
+  login: admin
+
+env_variables:
+  JWT_SECRET: "eK1n5BGeH0yiVkrwFmOT7mQxFNydtH1A8QRMRqJST/tNEsNIcNDdF5YhVsgwDbD/8yEa5Uh3GDOssWOeLg9rDA=="

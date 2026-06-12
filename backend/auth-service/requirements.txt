@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+gunicorn
+pydantic[email]
+google-auth
+python-dotenv
+PyJWT
+python-multipart
+sqlalchemy
+pymysql
+cloud-sql-python-connector[pymysql]
+pyotp
+qrcode[pil]
